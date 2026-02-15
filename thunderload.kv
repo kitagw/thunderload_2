@@ -1,0 +1,284 @@
+##:kivy
+#:import FileStat filemanager.FileStat
+#:import MDActionBottomAppBarButton kivymd.uix.appbar.MDActionBottomAppBarButton
+#:import MDSharedAxisTransition kivymd.uix.transition.transition.MDSharedAxisTransition
+
+ThunderloadWidget:
+
+<ThunderloadWidget>:
+    MDScreen:
+        size: root.size
+
+        MDBoxLayout:
+            orientation: 'vertical'
+
+            MDScreenManager:
+                id: sm
+                transition: MDSharedAxisTransition(transition_axis='x', duration=0.5, switch_animation='easing_standard', slide_distance=dp(25))
+
+                FileScreen:
+                    id: file_screen
+                    name: 'file'
+
+                LogScreen:
+                    id: log_screen
+                    name: 'log'
+
+                ConfigScreen:
+                    id: config_screen
+                    name: 'config'
+
+            MDBottomAppBar:
+                action_items:
+                    [
+                    MDActionBottomAppBarButton(disabled=True),
+                    MDActionBottomAppBarButton(icon='file', on_release=root.on_release_file),
+                    MDActionBottomAppBarButton(disabled=True),
+                    MDActionBottomAppBarButton(icon='text-box', on_release=root.on_release_log),
+                    MDActionBottomAppBarButton(disabled=True),
+                    MDActionBottomAppBarButton(icon='cog', on_release=root.on_release_config),
+                    ]
+
+                MDFabBottomAppBarButton:
+                    id: thunder_button
+                    icon: 'lightning-bolt'
+                    text_color: '#ffff00'
+                    line_color: app.theme_cls.secondaryContainerColor
+                    on_release: root.on_release_start()
+
+<FileInfo>:
+    adaptive_height: True
+    line_color: '#ffff00' if root.status == FileStat.S_PROCESSING else app.theme_cls.backgroundColor if root.status == FileStat.S_FINISHED else '#ff0000' if root.status == FileStat.S_FAILED else '#0066cc'
+    line_width: '2sp'
+
+    MDBoxLayout:
+        orientation: 'horizontal'
+        adaptive_height: True
+
+        MDIcon:
+            icon: 'lightning-bolt' if root.status == FileStat.S_PROCESSING else 'cloud' if root.status == FileStat.S_FINISHED else 'close-thick' if root.status == FileStat.S_FAILED else 'image-filter-hdr'
+            padding: '20sp'
+            height: file_label.height
+            theme_text_color: 'Custom'
+            text_color: '#ffffff'
+
+        MDLabel:
+            id: file_label
+            adaptive_height: True
+            valign: 'center'
+            halign: 'left'
+            padding: '7sp'
+            theme_text_color: 'Custom'
+            text_color: '#ffffff'
+            text: '【{}/{}】{}/{}MB ({})\n　┗ {}'.format(root.year, root.date, '{:,.1f}'.format(FileStat.to_view_size(root.range_pos)), '{:,.1f}'.format(FileStat.to_view_size(root.file_size)), root.try_count, root.file_name)
+
+<FileScreen>:
+    MDBoxLayout:
+        orientation: 'vertical'
+
+        MDTopAppBar:
+            type: 'small'
+            theme_bg_color: 'Custom'
+            md_bg_color: '#0066cc'
+
+            MDTopAppBarLeadingButtonContainer:
+                MDActionTopAppBarButton:
+                    icon: 'file'
+                    disabled: True
+
+            MDTopAppBarTitle:
+                text: 'Thunderload'
+
+            MDTopAppBarTrailingButtonContainer:
+                MDActionTopAppBarButton:
+                    disabled: True
+
+                MDActionTopAppBarButton:
+                    id: refresh_button
+                    icon: 'refresh-circle'
+                    on_release: app.root.on_release_refresh()
+
+        MDLinearProgressIndicator:
+            id: ind
+            adaptive_height: True
+            size_hint: 1, 0.005
+            value: app.progress_value
+            indicator_color: app.progress_color
+
+        MDLabel:
+            id: msg
+            adaptive_height: True
+            size_hint: 1, 0.07
+            halign: 'center'
+            text: 'FileScreen'
+            md_bg_color: '#1F1F25'
+
+        MDDivider:
+            divider_width: '2sp'
+            color: 0, 0, 0, 0
+
+        FileRecycleView:
+            id: rv
+            data: self.file_list
+            viewclass: 'FileInfo'
+            effect_cls: 'ScrollEffect'
+
+            RecycleBoxLayout:
+                spacing: '6sp'
+                padding: '1sp'
+                orientation: 'vertical'
+                size_hint: 1, None
+                height: self.minimum_height
+                default_size_hint: 1, None
+                default_size: None, None
+
+        MDDivider:
+            divider_width: '2sp'
+            color: 0, 0, 0, 0
+
+<LogText>:
+    adaptive_height: True
+    padding: '4sp'
+    theme_font_name: 'Custom'
+    font_name: 'log_font'
+    line_color: app.theme_cls.secondaryContainerColor
+
+<LogScreen>:
+    MDBoxLayout:
+        orientation: 'vertical'
+
+        MDTopAppBar:
+            type: 'small'
+            theme_bg_color: 'Custom'
+            md_bg_color: '#0066cc'
+            
+            MDTopAppBarLeadingButtonContainer:
+                MDActionTopAppBarButton:
+                    icon: 'text-box'
+                    disabled: True
+
+            MDTopAppBarTitle:
+                text: 'ログ'
+
+        MDLinearProgressIndicator:
+            id: log_ind
+            adaptive_height: True
+            size_hint: 1, 0.005
+            value: app.progress_value
+            indicator_color: app.progress_color
+
+        MDRecycleView:
+            id: rv
+            viewclass: 'LogText'
+            effect_cls: 'ScrollEffect'
+ 
+            RecycleBoxLayout:
+                size_hint: 1, None
+                height: self.minimum_height
+                default_size_hint: 1, None
+                default_size: None, None
+                spacing: 0
+                padding: 0
+                orientation: 'vertical'
+
+<ConfigTitleText>:
+    adaptive_height: True
+    padding: '4sp'
+    line_color: app.theme_cls.secondaryContainerColor
+    markup: True
+    font_style: 'Title'
+    theme_text_color: 'Custom'
+    text_color: '#6592D2'
+
+<ConfigItemText>:
+    adaptive_height: True
+    padding: '4sp'
+    line_color: app.theme_cls.secondaryContainerColor
+    markup: True
+    on_ref_press: self.show_input_dialog()
+
+<ConfigScreen>:
+    MDBoxLayout:
+        orientation: 'vertical'
+
+        MDTopAppBar:
+            type: 'small'
+            theme_bg_color: 'Custom'
+            md_bg_color: '#0066cc'
+
+            MDTopAppBarLeadingButtonContainer:
+                MDActionTopAppBarButton:
+                    icon: 'cog'
+                    disabled: True
+
+            MDTopAppBarTitle:
+                text: '設定'
+
+            MDTopAppBarTrailingButtonContainer:
+                MDActionTopAppBarButton:
+                    disabled: True
+
+                MDActionTopAppBarButton:
+                    id: lock_button
+                    icon: 'lock'
+                    on_release: root.on_release_lock()
+
+                MDActionTopAppBarButton:
+                    id: delete_token_button
+                    icon: 'cloud-key'
+                    on_release: root.on_release_delete_token()
+
+                MDActionTopAppBarButton:
+                    icon: 'exit-to-app'
+                    on_release: root.on_release_exit()
+
+        MDLinearProgressIndicator:
+            id: config_ind
+            adaptive_height: True
+            size_hint: 1, 0.005
+            value: app.progress_value
+            indicator_color: app.progress_color
+
+        MDScrollView:
+            MDBoxLayout:
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+
+                ConfigTitleText:
+                    text: 'Terminal'
+
+                ConfigItemTextJA:
+                    title: 'ローカルパス'
+                    key: 'local_path'
+
+                ConfigTitleText:
+                    text: 'OneDrive'
+
+                ConfigItemTextJA:
+                    title: 'アップロードパス'
+                    key: 'upload_path'
+
+                ConfigTitleText:
+                    text: 'Graph API'
+
+                ConfigItemTextJA:
+                    title: 'Client ID'
+                    key: 'client_id'
+
+                ConfigItemTextJA:
+                    title: 'Authority'
+                    key: 'authority'
+        
+        MDStackLayout:
+            orientation: 'rl-tb'
+            adaptive_height: True
+            padding: '2sp'
+            line_color: app.theme_cls.secondaryContainerColor
+
+            MDLabel:
+                adaptive_size: True
+                text: 'Thunderload 2.0 © 2026 Tomohisa Kitagawa'
+
+            MDIcon:
+                icon: 'lightning-bolt'

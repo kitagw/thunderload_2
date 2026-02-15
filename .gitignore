@@ -1,0 +1,6 @@
+.buildozer
+resources
+__pycache__
+.vscode
+.venv
+doc

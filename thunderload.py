@@ -11,7 +11,7 @@ from filemanager import FileStat, LocalFileStore
 from kivy.clock import Clock
 from kivy.properties import ListProperty, NumericProperty, ObjectProperty, StringProperty
 from kivy.uix.widget import Widget
-from kivy.utils import escape_markup
+from kivy.utils import escape_markup, platform
 from kivymd.app import MDApp
 from kivymd.uix.button import MDButton, MDButtonText
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -22,6 +22,35 @@ from kivymd.uix.screen import MDScreen
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.widget import MDWidget
 from textfield4ja import TextField_JA
+#import time
+from time import sleep
+
+# Android APIのインポート（Linux上ではエラーになるため、try-exceptで囲む）
+try:
+    from jnius import autoclass, PythonJavaClass, java_method # type: ignore
+    from android.permissions import request_permissions, Permission # type: ignore
+    from android.broadcast import BroadcastReceiver # type: ignore
+    
+    # Javaクラスのインポート
+    String = autoclass('java.lang.String')
+    # Androidクラスのインポート
+    Intent = autoclass('android.content.Intent')
+    IntentFilter = autoclass('android.content.IntentFilter')
+    Context = autoclass('android.content.Context')
+    Handler = autoclass('android.os.Handler')
+    ContextCompat = autoclass('androidx.core.content.ContextCompat')
+    # kivyクラスのインポート
+    Service = autoclass('org.kivy.android.PythonService')
+    PythonActivity = autoclass('org.kivy.android.PythonActivity')
+
+    currentActivity = PythonActivity.mActivity
+
+except ImportError:
+    # Linux環境用のダミー
+    class Dummy:
+        def __getattr__(self, name): return self
+    Intent, LocalBroadcastManager, PythonActivity, currentActivity, Service, IntentFilter = [Dummy()] * 6
+    print("Running in desktop environment. Android APIs are mocked.")
 
 # RecycleViewファイル項目
 class FileInfo(MDBoxLayout):
@@ -259,7 +288,12 @@ class ThunderloadWidget(MDWidget):
         app.progress_color = [1, 1, 0, 1]
         app.progress_value = 0
 
+        # サービステストのため更新ボタン活性化
+        self.ids.thunder_button.disabled = False
+
+
     def add_log(self, level, color, log_text):
+        print("DEBUG add_log: {}, {}, {}".format(level, color, log_text))
         # UI スレッド外から呼ばれた場合は UI スレッドで実行する
         if threading.current_thread() is not threading.main_thread():
             Clock.schedule_once(lambda dt: self.add_log(level, color, log_text), 0)
@@ -289,8 +323,8 @@ class ThunderloadWidget(MDWidget):
         self.init_file_screen()
 
     def on_release_start(self):
-        if self.file_store.file_count == 0:
-            return 
+        #if self.file_store.file_count == 0:
+        #    return 
 
         # ボタン非活性化
         # 稲妻ボタン
@@ -298,9 +332,104 @@ class ThunderloadWidget(MDWidget):
         # 更新ボタン
         self.ids.file_screen.ids.refresh_button.disabled = True
 
+        # ★★★サービス開始
+        Clock.schedule_once(self.setup_android_and_start_service, 0)
+
         # バックグラウンド処理開始
-        thread = threading.Thread(target=self.background_process)
-        thread.start()
+        #thread = threading.Thread(target=self.background_process)
+        #thread.start()
+
+    # ★★★androidセットアップ、サービス開始
+    def setup_android_and_start_service(self, dt):
+        # 1. 既に起動済みなら、何もしないで帰る
+        if hasattr(self, 'service_started') and self.service_started:
+            print("DEBUG: Service already started. Skipping setup.")
+            Log.info('サービスは既に起動済みです。セットアップをスキップします。')
+            return
+
+        """Android環境でレシーバーを登録し、サービスを開始"""
+        if platform == 'android':
+            Log.info('Android環境でレシーバーを登録し、サービスを開始')
+            # 2. 権限リクエスト
+            request_permissions([
+                Permission.INTERNET, 
+                Permission.WAKE_LOCK, 
+                Permission.FOREGROUND_SERVICE
+            ])
+            Log.info('権限リクエスト完了')
+
+            # 3. レシーバーの作成と登録（受け皿を先に作る）
+            # ※MyReceiverクラスの定義などはここにある想定
+            self.br = BroadcastReceiver(
+                self.on_broadcast_received, 
+                actions=['jp.co.example.UPLOAD_PROGRESS_UPDATE']
+            )
+            Log.info('レシーバー作成完了')
+            if hasattr(self.br, 'receiver'):
+                intent_filter = IntentFilter()
+                intent_filter.addAction('jp.co.example.UPLOAD_PROGRESS_UPDATE')
+                # Android 14対応
+                Log.info('レシーバー登録中... (Android 14対応)')
+                currentActivity.registerReceiver(
+                    self.br.receiver, 
+                    intent_filter, 
+                    ContextCompat.RECEIVER_NOT_EXPORTED
+                )
+            Log.info('レシーバー登録完了')
+
+            # 4. 全ての準備が整ってからサービスを開始！
+            self.start_service()
+            Log.info('サービス開始完了')
+
+            # 5. 最後に「起動済みフラグ」を立てる
+            self.service_started = True
+            print("DEBUG: Receiver registered and Service started.")
+            Log.info('レシーバー登録とサービス開始完了')
+
+    # ★★★サービス開始
+    def start_service(self):  
+        if platform == 'android':
+
+            # クラス名はマニフェストと完全に一致させる
+            service_class_name = 'org.kitagw.thunderload_2.ServiceMyservice'
+            service_class = autoclass(service_class_name)
+            service_intent = Intent(currentActivity, service_class)
+
+            # --- 重要：KivyのPythonService(Java)が内部で必要とする全パス情報を取得 ---
+            app_root = currentActivity.getFilesDir().getAbsolutePath() + "/app"
+            
+            # --- JNIエラー(NULL jstring)を防ぐための7つの必須Extra ---
+            service_intent.putExtra(String('androidPrivate'), String(app_root))
+            service_intent.putExtra(String('androidArgument'), String(app_root))
+            service_intent.putExtra(String('serviceEntrypoint'), String('service/main.py'))
+            service_intent.putExtra(String('pythonName'), String('myservice'))
+            service_intent.putExtra(String('pythonHome'), String(app_root))
+            service_intent.putExtra(String('pythonPath'), String(app_root))
+            service_intent.putExtra(String('pythonServiceArgument'), String('')) # 空文字でOK
+
+            # --- Android 14 / ForegroundServiceを動かすための設定 ---
+            service_intent.putExtra(String('serviceStartAsForeground'), String('true'))
+            service_intent.putExtra(String('serviceTitle'), String('My Service'))
+            service_intent.putExtra(String('serviceDescription'), String('Service is running...'))
+
+            # サービスの開始
+            currentActivity.startForegroundService(service_intent)
+            print("DEBUG: Started service with all required JNI extras.")
+
+    def on_broadcast_received(self, context, intent):
+        """ブロードキャストを受信した時のコールバック"""
+        # intent からデータを取り出してUIを更新
+        # android.broadcast が自動的にメインスレッドを考慮してくれるため
+        # Clock.schedule_once を使わなくても安全な場合が多いです
+        print("DEBUG: on_broadcast_received") # 追加
+        Log.info('ブロードキャスト受信: {}'.format(intent.getAction()))
+        # self.update_ui(context, intent)
+
+    def on_stop(self):
+        # アプリ終了時にレシーバーを停止（重要）
+        if platform == 'android' and hasattr(self, 'br'):
+            self.br.stop()
+        super().on_stop()
 
     # バックグラウンドプロセス
     def background_process(self):

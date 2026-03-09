@@ -83,7 +83,7 @@ orientation = portrait
 # ":foreground:sticky" for sticky foreground services. The default is a background service.
 # Bound services are not supported.
 #services = NAME:ENTRYPOINT_TO_PY,NAME2:ENTRYPOINT2_TO_PY
-services = myservice:service/main.py:dataSync
+services = thunderloadservice:service/main.py:dataSync
 
 #
 # OSX Specific

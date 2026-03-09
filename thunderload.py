@@ -45,6 +45,9 @@ try:
 
     currentActivity = PythonActivity.mActivity
 
+    # カスタムアクション名
+    ACTION_UPDATE = 'org.kitagw.thunderload.UPLOAD_PROGRESS_UPDATE'
+
 except ImportError:
     # Linux環境用のダミー
     class Dummy:
@@ -362,12 +365,12 @@ class ThunderloadWidget(MDWidget):
             # ※MyReceiverクラスの定義などはここにある想定
             self.br = BroadcastReceiver(
                 self.on_broadcast_received, 
-                actions=['jp.co.example.UPLOAD_PROGRESS_UPDATE']
+                actions=[ACTION_UPDATE]
             )
             Log.info('レシーバー作成完了')
             if hasattr(self.br, 'receiver'):
                 intent_filter = IntentFilter()
-                intent_filter.addAction('jp.co.example.UPLOAD_PROGRESS_UPDATE')
+                intent_filter.addAction(ACTION_UPDATE)
                 # Android 14対応
                 Log.info('レシーバー登録中... (Android 14対応)')
                 currentActivity.registerReceiver(
@@ -391,7 +394,7 @@ class ThunderloadWidget(MDWidget):
         if platform == 'android':
 
             # クラス名はマニフェストと完全に一致させる
-            service_class_name = 'org.kitagw.thunderload_2.ServiceMyservice'
+            service_class_name = 'org.kitagw.thunderload_2.ServiceThunderloadservice'
             service_class = autoclass(service_class_name)
             service_intent = Intent(currentActivity, service_class)
 
@@ -402,14 +405,14 @@ class ThunderloadWidget(MDWidget):
             service_intent.putExtra(String('androidPrivate'), String(app_root))
             service_intent.putExtra(String('androidArgument'), String(app_root))
             service_intent.putExtra(String('serviceEntrypoint'), String('service/main.py'))
-            service_intent.putExtra(String('pythonName'), String('myservice'))
+            service_intent.putExtra(String('pythonName'), String('thunderloadservice'))
             service_intent.putExtra(String('pythonHome'), String(app_root))
             service_intent.putExtra(String('pythonPath'), String(app_root))
             service_intent.putExtra(String('pythonServiceArgument'), String('')) # 空文字でOK
 
             # --- Android 14 / ForegroundServiceを動かすための設定 ---
             service_intent.putExtra(String('serviceStartAsForeground'), String('true'))
-            service_intent.putExtra(String('serviceTitle'), String('My Service'))
+            service_intent.putExtra(String('serviceTitle'), String('Thunderload Service'))
             service_intent.putExtra(String('serviceDescription'), String('Service is running...'))
 
             # サービスの開始

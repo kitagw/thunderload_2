@@ -18,19 +18,19 @@ String = autoclass('java.lang.String')
 
 TAG = 'SERVICE_DEBUG'
 # カスタムアクション名
-ACTION_UPDATE = 'jp.co.example.UPLOAD_PROGRESS_UPDATE'
+ACTION_UPDATE = 'org.kitagw.thunderload.UPLOAD_PROGRESS_UPDATE'
 
 # 通知IDを定数にしておくと間違いがありません
 NOTIFICATION_ID = 1
-CHANNEL_ID = 'my_service_channel'
+
+CHANNEL_ID = 'thunderload_service_channel'
+CHANNEL_NAME = 'Thunderload Background Service'
 
 def setup_foreground_service():
     Log.i(TAG, "setup_foreground_service - 1-1")
     # 1. 通知チャンネルの作成 (Android 8.0以上必須)
-    channel_id = 'my_service_channel'
-    channel_name = 'My Background Service'
     importance = NotificationManager.IMPORTANCE_LOW
-    channel = NotificationChannel(channel_id, channel_name, importance)
+    channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance)
     
     Log.i(TAG, "setup_foreground_service - 1a-1")
     notification_manager = service.getSystemService(Context.NOTIFICATION_SERVICE)
@@ -49,7 +49,7 @@ def setup_foreground_service():
 
     Log.i(TAG, "setup_foreground_service - 3-1")
     # 3. 通知の構築
-    builder = NotificationBuilder(app_context, channel_id)
+    builder = NotificationBuilder(app_context, CHANNEL_ID)
     builder.setContentTitle("サービス実行中")
     builder.setContentText("バックグラウンドでデータを集計しています...")
     builder.setSmallIcon(service.getApplicationInfo().icon)
@@ -64,7 +64,7 @@ def setup_foreground_service():
 def acquire_wakelock():
     # CPUを眠らせない設定
     power_manager = service.getSystemService(Context.POWER_SERVICE)
-    wakelock = power_manager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyService:WakeLockTag")
+    wakelock = power_manager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ThunderloadService:WakeLockTag")
     wakelock.acquire()
     return wakelock
 
@@ -132,7 +132,7 @@ try:
 
     while True:
         # 10秒ごとに通知を更新
-        if counter % 10 == 0:  
+        if counter % 10 == 0:
             update_notification(counter)
 
         Log.i(TAG, "Service heartbeat...")

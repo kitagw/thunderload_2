@@ -122,19 +122,7 @@ fullscreen = 0
 # (list) Permissions
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions.html for all the supported syntaxes and properties)
 #android.permissions = android.permission.INTERNET, (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=18)
-#android.permissions = android.permission.INTERNET,android.permission.ACCESS_NETWORK_STATE,android.permission.MANAGE_EXTERNAL_STORAGE, android.permission.MANAGE_MEDIA, android.permission.READ_EXTERNAL_STORAGE, android.permission.WRITE_EXTERNAL_STORAGE
-android.permissions =
-    INTERNET,
-    ACCESS_NETWORK_STATE,
-    MANAGE_EXTERNAL_STORAGE,
-    MANAGE_MEDIA,
-    READ_EXTERNAL_STORAGE,
-    WRITE_EXTERNAL_STORAGE,
-    WAKE_LOCK,
-    FOREGROUND_SERVICE,
-    FOREGROUND_SERVICE_DATA_SYNC,
-    POST_NOTIFICATIONS,
-    READ_APP_SPECIFIC_LOCALES
+android.permissions = INTERNET, ACCESS_NETWORK_STATE, WAKE_LOCK, FOREGROUND_SERVICE, FOREGROUND_SERVICE_DATA_SYNC, POST_NOTIFICATIONS, READ_MEDIA_IMAGES
 
 # (list) features (adds uses-feature -tags to manifest)
 #android.features = android.hardware.usb.host

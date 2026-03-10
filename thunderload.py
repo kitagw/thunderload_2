@@ -291,10 +291,6 @@ class ThunderloadWidget(MDWidget):
         app.progress_color = [1, 1, 0, 1]
         app.progress_value = 0
 
-        # サービステストのため更新ボタン活性化
-        self.ids.thunder_button.disabled = False
-
-
     def add_log(self, level, color, log_text):
         print("DEBUG add_log: {}, {}, {}".format(level, color, log_text))
         # UI スレッド外から呼ばれた場合は UI スレッドで実行する
@@ -326,8 +322,8 @@ class ThunderloadWidget(MDWidget):
         self.init_file_screen()
 
     def on_release_start(self):
-        #if self.file_store.file_count == 0:
-        #    return 
+        if self.file_store.file_count == 0:
+            return 
 
         # ボタン非活性化
         # 稲妻ボタン
@@ -335,12 +331,8 @@ class ThunderloadWidget(MDWidget):
         # 更新ボタン
         self.ids.file_screen.ids.refresh_button.disabled = True
 
-        # ★★★サービス開始
+        # バックグラウンド★サービス開始
         Clock.schedule_once(self.setup_android_and_start_service, 0)
-
-        # バックグラウンド処理開始
-        #thread = threading.Thread(target=self.background_process)
-        #thread.start()
 
     # ★★★androidセットアップ、サービス開始
     def setup_android_and_start_service(self, dt):

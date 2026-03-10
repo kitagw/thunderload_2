@@ -6,7 +6,6 @@
 import datetime
 import os
 from config import Config
-# from driveclient import DriveClient
 from kivy.utils import platform 
 from log import Log
 from PIL import Image, UnidentifiedImageError
@@ -146,7 +145,6 @@ class FileStat:
     def to_view_size(cls, size):
         if size == 0:
             return 0
-        # m_size = size / DriveClient.MBYTE_SIZE
         m_size = size / FileStat.MBYTE_SIZE
         return 0.1 if m_size < 0.1 else m_size
 

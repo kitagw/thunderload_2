@@ -18,7 +18,7 @@ String = autoclass('java.lang.String')
 
 TAG = 'SERVICE_DEBUG'
 # カスタムアクション名
-ACTION_UPDATE = 'org.kitagw.thunderload.UPLOAD_PROGRESS_UPDATE'
+ACTION_UPDATE = 'org.kitagw.thunderload_2.UPLOAD_PROGRESS_UPDATE'
 
 # 通知IDを定数にしておくと間違いがありません
 NOTIFICATION_ID = 1

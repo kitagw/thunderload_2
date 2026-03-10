@@ -46,7 +46,7 @@ try:
     currentActivity = PythonActivity.mActivity
 
     # カスタムアクション名
-    ACTION_UPDATE = 'org.kitagw.thunderload.UPLOAD_PROGRESS_UPDATE'
+    ACTION_UPDATE = 'org.kitagw.thunderload_2.UPLOAD_PROGRESS_UPDATE'
 
 except ImportError:
     # Linux環境用のダミー

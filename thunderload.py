@@ -256,12 +256,29 @@ class ThunderloadWidget(MDWidget):
         except Exception as ex:
             Log.error('DriveClient初期化失敗\n' + repr(ex))
             return
-        
+
+        # 権限リクエスト
+        self.request_permissions()
+
         # 設定画面にDriveClientを設定
         # 
         # self.ids.config_screen.client = self.client
         # 
         # ファイルスクリーン初期化
+        self.init_file_screen()
+
+    # 権限リクエスト（通知、写真と動画の権限）
+    def request_permissions(self):
+        if platform == 'android':
+            request_permissions([
+                Permission.POST_NOTIFICATIONS,
+                Permission.READ_MEDIA_IMAGES,
+                Permission.READ_MEDIA_VIDEO
+            ], self.on_permissions_result)
+
+    # 権限リクエストの結果コールバック
+    def on_permissions_result(self, permissions, grant_results):
+        # 通知、写真と動画の権限のリクエストコールバックで画面を初期化する（権限がないとファイルが読めないため）
         self.init_file_screen()
 
     # ファイルスクリーン初期化

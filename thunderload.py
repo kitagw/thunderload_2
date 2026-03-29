@@ -27,7 +27,7 @@ from time import sleep
 
 # Android APIのインポート（Linux上ではエラーになるため、try-exceptで囲む）
 try:
-    from jnius import autoclass, PythonJavaClass, java_method # type: ignore
+    from jnius import autoclass # type: ignore
     from android.permissions import request_permissions, Permission # type: ignore
     from android.broadcast import BroadcastReceiver # type: ignore
     
@@ -54,6 +54,24 @@ except ImportError:
         def __getattr__(self, name): return self
     Intent, LocalBroadcastManager, PythonActivity, currentActivity, Service, IntentFilter = [Dummy()] * 6
     print("Running in desktop environment. Android APIs are mocked.")
+
+# ベースとなるパスの決定
+if platform == 'android':
+    BASE = os.environ['ANDROID_PRIVATE']
+else:
+    BASE = os.path.abspath('./resources')
+
+# 各ステータス用フォルダのパス
+PROGRESS_BASE = os.path.join(BASE, 'progress')
+BACKLOG = os.path.join(PROGRESS_BASE, 'backlog')
+PROCESSING = os.path.join(PROGRESS_BASE, 'processing')
+DONE = os.path.join(PROGRESS_BASE, 'done')
+
+# アプリ起動時に一度だけ呼ぶ
+for p in [BACKLOG, PROCESSING, DONE]:
+    if not os.path.exists(p):
+        os.makedirs(p, exist_ok=True)
+        print(f"DEBUG: Created directory: {p}")
 
 # RecycleViewファイル項目
 class FileInfo(MDBoxLayout):
@@ -267,6 +285,11 @@ class ThunderloadWidget(MDWidget):
         # ファイルスクリーン初期化
         self.init_file_screen()
 
+        Log.info(f'PROGRESS_BASE: {PROGRESS_BASE}')
+        Log.info(f'BACKLOG: {BACKLOG}')
+        Log.info(f'PROCESSING: {PROCESSING}')
+        Log.info(f'DONE: {DONE}')
+
     # 権限リクエスト（通知、写真と動画の権限）
     def request_permissions(self):
         if platform == 'android':
@@ -358,6 +381,9 @@ class ThunderloadWidget(MDWidget):
             print("DEBUG: Service already started. Skipping setup.")
             Log.info('サービスは既に起動済みです。セットアップをスキップします。')
             return
+
+        # ファイルリストを初期化してからサービスを開始する（これにより、サービス側でファイルリストを取得できるようになる）
+        self.file_store.init_progress_files()
 
         """Android環境でレシーバーを登録し、サービスを開始"""
         if platform == 'android':

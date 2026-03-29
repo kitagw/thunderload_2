@@ -4,11 +4,14 @@
 ローカルファイル管理
 '''
 import datetime
+import json
 import os
 from config import Config
 from kivy.utils import platform 
 from log import Log
 from PIL import Image, UnidentifiedImageError
+from progressmanager import ProgressManager
+from kivymd.app import MDApp
 
 '''
 ファイルの状態
@@ -65,6 +68,10 @@ class FileStat:
         self.data[FileStat.K_STATUS] = FileStat.S_UNPROCESSED
         self.data[FileStat.K_TRY_COUNT] = 0
         self.data[FileStat.K_RANGE_POS] = 0
+
+    # コンストラクタ：辞書型から生成する
+    def __init__(self, data):
+        self.data = data
 
     # プロパティ：ファイルパス
     @property
@@ -202,6 +209,10 @@ class LocalFileStore:
         # ファイルサイズ
         Log.info('アップロード対象ファイルサイズ：{:,.1f}MB'.format(FileStat.to_view_size(self.file_size)))
 
+    # コンストラクタ
+    def __init__(self, files):
+        self.files = files
+    
     # プロパティ：ファイル数
     @property
     def file_count(self):
@@ -216,3 +227,14 @@ class LocalFileStore:
     @property
     def range_pos(self):
         return sum(filestat.range_pos for filestat in self.files) if self.files else 0
+
+    # 進捗ファイル郡を初期化
+    def init_progress_files(self):
+        # アップロード対象のファイルリストを、progressフォルダにfilelist.jsonとして保存する
+        with open(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json'), 'w') as f2:
+            json.dump([f.data for f in self.files], f2, indent=2, ensure_ascii=False)
+
+        # アップロード対象のファイルの名称で、backlogフォルダに空ファイルを作成する
+        for f in self.files:
+            with open(os.path.join(ProgressManager.get(ProgressManager.K_BACKLOG), f.file_name), 'w') as f2:
+                pass

@@ -50,9 +50,13 @@ class FileStat:
     MBYTE_SIZE = 1048576 #1Mbyte
 
     # コンストラクタ
-    def __init__(self, file_dir, file_name):
+    def __init__(self, file_dir=None, file_name=None, data=None):
         # インスタンスデータの初期化
-        self.data = {}
+        if data is None:
+            self.data = {}
+        else:
+            self.data = data
+            return
 
         # ファイル名、パス情報
         file_path = f'{file_dir}/{file_name}'
@@ -68,10 +72,6 @@ class FileStat:
         self.data[FileStat.K_STATUS] = FileStat.S_UNPROCESSED
         self.data[FileStat.K_TRY_COUNT] = 0
         self.data[FileStat.K_RANGE_POS] = 0
-
-    # コンストラクタ：辞書型から生成する
-    def __init__(self, data):
-        self.data = data
 
     # プロパティ：ファイルパス
     @property
@@ -160,8 +160,12 @@ class FileStat:
 '''
 class LocalFileStore:
     # コンストラクタ
-    def __init__(self):
-        self.files = []
+    def __init__(self, files=None):
+        if files is None:
+            self.files = []
+        else:
+            self.files = files
+            return
 
         # ローカルファイルの参照パス
         local_path = Config.get(Config.K_LOCAL_PATH) if platform == 'android' else '/home/kitagawa/ピクチャ:/home/kitagawa/pictures'
@@ -182,7 +186,7 @@ class LocalFileStore:
                 # ローカルファイル一覧読み込み
                 file_count = len(files)
                 files.extend([
-                    FileStat(path_item, f)
+                    FileStat(file_dir=path_item, file_name=f)
                     for f in os.listdir(path_item)
                     if os.path.isfile(os.path.join(path_item, f))
                 ])
@@ -209,10 +213,6 @@ class LocalFileStore:
         # ファイルサイズ
         Log.info('アップロード対象ファイルサイズ：{:,.1f}MB'.format(FileStat.to_view_size(self.file_size)))
 
-    # コンストラクタ
-    def __init__(self, files):
-        self.files = files
-    
     # プロパティ：ファイル数
     @property
     def file_count(self):

@@ -4,6 +4,7 @@ import datetime
 import threading
 import time
 import os
+from action import Action
 from config import Config
 from log import Log
 # from driveclient import DriveClient
@@ -44,9 +45,6 @@ try:
     PythonActivity = autoclass('org.kivy.android.PythonActivity')
 
     currentActivity = PythonActivity.mActivity
-
-    # カスタムアクション名
-    ACTION_UPDATE = 'org.kitagw.thunderload_2.UPLOAD_PROGRESS_UPDATE'
 
 except ImportError:
     # Linux環境用のダミー
@@ -392,7 +390,7 @@ class ThunderloadWidget(MDWidget):
             request_permissions([
                 Permission.INTERNET, 
                 Permission.WAKE_LOCK, 
-                Permission.FOREGROUND_SERVICE
+                Permission            .FOREGROUND_SERVICE
             ])
             Log.info('権限リクエスト完了')
 
@@ -400,12 +398,13 @@ class ThunderloadWidget(MDWidget):
             # ※MyReceiverクラスの定義などはここにある想定
             self.br = BroadcastReceiver(
                 self.on_broadcast_received, 
-                actions=[ACTION_UPDATE]
+                actions=[Action.UPDATE, Action.LOG]
             )
             Log.info('レシーバー作成完了')
             if hasattr(self.br, 'receiver'):
                 intent_filter = IntentFilter()
-                intent_filter.addAction(ACTION_UPDATE)
+                intent_filter.addAction(Action.UPDATE)
+                intent_filter.addAction(Action.LOG)
                 # Android 14対応
                 Log.info('レシーバー登録中... (Android 14対応)')
                 currentActivity.registerReceiver(
@@ -457,10 +456,18 @@ class ThunderloadWidget(MDWidget):
     def on_broadcast_received(self, context, intent):
         """ブロードキャストを受信した時のコールバック"""
         # intent からデータを取り出してUIを更新
-        # android.broadcast が自動的にメインスレッドを考慮してくれるため
-        # Clock.schedule_once を使わなくても安全な場合が多いです
         print("DEBUG: on_broadcast_received") # 追加
-        Log.info('ブロードキャスト受信: {}'.format(intent.getAction()))
+        match intent.getAction():
+            case Action.UPDATE:
+                start_time_str = intent.getStringExtra('start_time')
+                counter_str = intent.getStringExtra('counter')
+                Log.info('ブロードキャスト受信: {} {} {}'.format(intent.getAction(), start_time_str, counter_str))
+            case Action.LOG:
+                log_text_str = intent.getStringExtra('log_text')
+                Log.info('ブロードキャスト受信: {} {}'.format(intent.getAction(), log_text_str))
+            case _:
+                pass
+    
         # self.update_ui(context, intent)
 
     def on_stop(self):

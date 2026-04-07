@@ -1,5 +1,5 @@
+from action import Action
 from jnius import autoclass # type: ignore
-import time
 from time import sleep
 
 # Javaクラスのインポート
@@ -17,7 +17,8 @@ String = autoclass('java.lang.String')
 
 TAG = 'SERVICE_DEBUG'
 # カスタムアクション名
-ACTION_UPDATE = 'org.kitagw.thunderload_2.UPLOAD_PROGRESS_UPDATE'
+# ACTION_UPDATE = 'org.kitagw.thunderload_2.UPLOAD_PROGRESS_UPDATE'
+# ACTION_LOG = 'org.kitagw.thunderload_2.LOG'
 
 # 通知IDを定数にしておくと間違いがありません
 NOTIFICATION_ID = 1
@@ -100,7 +101,7 @@ class ThunderloadService():
     def send_broadcast(self, start_time, counter):
         """メインアプリへデータをブロードキャストする"""
         try:
-            intent = Intent(ACTION_UPDATE)
+            intent = Intent(Action.UPDATE)
             # 自分のアプリ内だけに送信することを明示（これが重要！）
             intent.setPackage(self.service.getPackageName())
             intent.putExtra('start_time', String(str(start_time)))
@@ -112,6 +113,18 @@ class ThunderloadService():
             self.service.sendBroadcast(intent)
             # ログ確認用
             Log.i(TAG, f"END Sent start_time={start_time}, counter={counter}")
+        except Exception as e:
+            Log.i(TAG, f"Exception: {e}")
+
+    def log(self, log_text):
+        try:
+            intent = Intent(Action.LOG)
+            # 自分のアプリ内だけに送信することを明示（これが重要！）
+            intent.setPackage(self.service.getPackageName())
+            intent.putExtra('log_text', String(str(log_text)))
+
+            # ログ確認用
+            self.service.sendBroadcast(intent)
         except Exception as e:
             Log.i(TAG, f"Exception: {e}")
 

@@ -22,8 +22,9 @@ try:
     tService.acquire_wakelock()
 
     while True:
-        # 10秒ごとに通知を更新
-        if counter % 10 == 0:
+        # 5秒ごとに通知を更新
+        if counter % 5 == 0:
+            tService.log("Updating notification: counter={}".format(counter))
             tService.update_notification(counter)
 
         Log.i(TAG, "Service heartbeat...")

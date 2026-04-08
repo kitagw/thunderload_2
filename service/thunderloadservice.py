@@ -16,9 +16,6 @@ PowerManager = autoclass('android.os.PowerManager')
 String = autoclass('java.lang.String')
 
 TAG = 'SERVICE_DEBUG'
-# カスタムアクション名
-# ACTION_UPDATE = 'org.kitagw.thunderload_2.UPLOAD_PROGRESS_UPDATE'
-# ACTION_LOG = 'org.kitagw.thunderload_2.LOG'
 
 # 通知IDを定数にしておくと間違いがありません
 NOTIFICATION_ID = 1
@@ -26,42 +23,16 @@ NOTIFICATION_ID = 1
 CHANNEL_ID = 'thunderload_service_channel'
 CHANNEL_NAME = 'Thunderload Background Service'
 
-
-#このクラスは、Androidのバックグラウンドサービスとして動作するための基本的な構造を提供します。サービスが開始されると、CPUを眠らせないようにWakeLockを取得し、フォアグラウンドサービスとして通知を表示します。サービスが停止されると、WakeLockを解放してCPUを眠らせるようにします。これにより、長時間のバックグラウンド処理が可能になりますが、ユーザーのバッテリー消費に注意が必要です。実際のアップロード処理はrun_upload_loop()メソッド内で実装することができます。
+# このクラスは、Androidのバックグラウンドサービスとして動作するための基本的な構造を提供します。
+# サービスが開始されると、CPUを眠らせないようにWakeLockを取得し、フォアグラウンドサービスとして通知を表示します。
+# サービスが停止されると、WakeLockを解放してCPUを眠らせるようにします。
+# これにより、長時間のバックグラウンド処理が可能になりますが、ユーザーのバッテリー消費に注意が必要です。
+# 実際のアップロード処理はrun_upload_loop()メソッド内で実装することができます。
 class ThunderloadService():
     def __init__(self):
         self.service = PythonService.mService
-        self.wakelock = None
-
-    # def on_start(self):
-    #     try:
-    #         # 2. アップロードのメインループ実行
-    #         self.run_upload_loop()
-    #     finally:
-    #         # 3. 何があっても（エラーが起きても）最後はCPUを解放する
-    #         self.stop_service()
-
-    # def stop_service(self):
-    #     # WakeLockを解除
-    #     if self.wakelock:
-    #         self.release_wakelock()
-        
-    #     # サービス自体を終了（これをしないと通知バーに残る）
-    #     # PythonService.mService.stopSelf() など
-    #     self.service.stopSelf()
-
-    def acquire_wakelock(self):
-        # CPUを眠らせない設定
-        power_manager = self.service.getSystemService(Context.POWER_SERVICE)
-        wakelock = power_manager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ThunderloadService:WakeLockTag")
-        wakelock.acquire()
-        self.wakelock = wakelock
-
-    def release_wakelock(self):
-        if self.wakelock and self.wakelock.isHeld():
-            self.wakelock.release()
-            self.wakelock = None
-            print("DEBUG: CPUを解放しました。おやすみなさい。")
+        self.setup_foreground_service()
+        self.acquire_wakelock()
 
     def setup_foreground_service(self):
         Log.i(TAG, "setup_foreground_service - 1-1")
@@ -97,6 +68,39 @@ class ThunderloadService():
         # 4. フォアグラウンドサービスとして開始
         # 第1引数は通知ID（0以外）、第2引数は通知オブジェクト
         self.service.startForeground(NOTIFICATION_ID, notification)
+
+    def acquire_wakelock(self):
+        # CPUを眠らせない設定
+        power_manager = self.service.getSystemService(Context.POWER_SERVICE)
+        wakelock = power_manager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ThunderloadService:WakeLockTag")
+        wakelock.acquire()
+        self.wakelock = wakelock
+
+    def release_wakelock(self):
+        if self.wakelock and self.wakelock.isHeld():
+            self.wakelock.release()
+            self.wakelock = None
+            print("DEBUG: CPUを解放しました。おやすみなさい。")
+
+    def start_service(self):
+        try:
+            # 2. アップロードのメインループ実行
+            self.run_upload()
+        finally:
+            # 3. 何があっても（エラーが起きても）最後はCPUを解放する
+            self.stop_service()
+
+    def stop_service(self):
+        # WakeLockを解除
+        if self.wakelock:
+            self._release_wakelock()
+        
+        # サービス自体を終了（これをしないと通知バーに残る）
+        # PythonService.mService.stopSelf() など
+        self.service.stopSelf()
+
+    def run_upload(self):
+        pass
 
     def send_broadcast(self, start_time, counter):
         """メインアプリへデータをブロードキャストする"""

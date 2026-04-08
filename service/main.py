@@ -18,12 +18,10 @@ try:
     counter = 0
 
     tService = ThunderloadService()
-    tService.setup_foreground_service()
-    tService.acquire_wakelock()
 
     while True:
-        # 5秒ごとに通知を更新
-        if counter % 5 == 0:
+        # 10秒ごとに通知を更新
+        if counter % 10 == 0:
             tService.log("Updating notification: counter={}".format(counter))
             tService.update_notification(counter)
 

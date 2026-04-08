@@ -1,6 +1,11 @@
+import json
+import os
 from action import Action
 from jnius import autoclass # type: ignore
 from time import sleep
+#from filemanager import FileStat, LocalFileStore
+#from progressmanager import ProgressManager
+
 
 # Javaクラスのインポート
 Log = autoclass('android.util.Log')
@@ -82,13 +87,13 @@ class ThunderloadService():
             self.wakelock = None
             print("DEBUG: CPUを解放しました。おやすみなさい。")
 
-    def start_service(self):
-        try:
-            # 2. アップロードのメインループ実行
-            self.run_upload()
-        finally:
-            # 3. 何があっても（エラーが起きても）最後はCPUを解放する
-            self.stop_service()
+    # def start_service(self):
+    #     try:
+    #         # 2. アップロードのメインループ実行
+    #         self.run_upload()
+    #     finally:
+    #         # 3. 何があっても（エラーが起きても）最後はCPUを解放する
+    #         self.stop_service()
 
     def stop_service(self):
         # WakeLockを解除
@@ -100,7 +105,34 @@ class ThunderloadService():
         self.service.stopSelf()
 
     def run_upload(self):
-        pass
+        self.log("ファイルのアップロードを開始します。")
+
+        # # configファイルがローカルにある場合はロード
+        # jsondata = open(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json'),'r')
+        # filesdict = json.load(jsondata)
+
+        # for f in filesdict:
+        #     filestat = FileStat(data=f)
+        #     print("> file_name: {}, file_size: {}, range_pos: {}".format(filestat.file_name, filestat.file_size, filestat.range_pos))
+
+        # files = []
+        # files.extend([
+        #     FileStat(data=f)
+        #     for f in filesdict
+        # ])
+
+        # self.store = LocalFileStore(files)
+        # self.process_file_no = 0
+
+        # # ローカルファイルを走査
+        # for filestat in self.file_store.files:
+        #     # 処理中のファイル数
+        #     self.process_file_no += 1
+        #     # 処理中のファイル
+        #     self.current_file = filestat
+        #     self.log(filestat.file_name)
+
+        self.log("全てのファイルの処理が完了しました。")
 
     def send_broadcast(self, start_time, counter):
         """メインアプリへデータをブロードキャストする"""
@@ -135,6 +167,8 @@ class ThunderloadService():
     def update_notification(self, counter):
         """通知の中身を更新する"""
         try:
+            self.log(f"update_notification called with counter={counter}")
+
             app_context = self.service.getApplicationContext()
             
             # 1. 再度インテントを作成（タップ時にアプリを開くため）
@@ -160,6 +194,9 @@ class ThunderloadService():
             # 3. NotificationManagerを取得して更新を通知
             notification_manager = self.service.getSystemService(Context.NOTIFICATION_SERVICE)
             notification_manager.notify(NOTIFICATION_ID, notification)
-            
+
+            self.log(f"update_notification successfully updated with counter={counter}")
+
         except Exception as e:
             Log.e(TAG, f"Notification update failed: {e}")
+            self.log(f"Notification update failed: {e}")

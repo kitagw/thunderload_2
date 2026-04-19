@@ -11,7 +11,6 @@ from kivy.utils import platform
 from log import Log
 from PIL import Image, UnidentifiedImageError
 from progressmanager import ProgressManager
-from kivymd.app import MDApp
 
 '''
 ファイルの状態

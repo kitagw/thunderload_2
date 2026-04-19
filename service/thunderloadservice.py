@@ -3,9 +3,8 @@ import os
 from action import Action
 from jnius import autoclass # type: ignore
 from time import sleep
-#from filemanager import FileStat, LocalFileStore
-#from progressmanager import ProgressManager
-
+from filemanager import FileStat, LocalFileStore
+from progressmanager import ProgressManager
 
 # Javaクラスのインポート
 Log = autoclass('android.util.Log')
@@ -107,30 +106,35 @@ class ThunderloadService():
     def run_upload(self):
         self.log("ファイルのアップロードを開始します。")
 
-        # # configファイルがローカルにある場合はロード
-        # jsondata = open(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json'),'r')
-        # filesdict = json.load(jsondata)
+        self.log(f'PROGRESS_BASE: {ProgressManager.get(ProgressManager.K_PROGRESS_BASE)}')
+        self.log(f'BACKLOG: {ProgressManager.get(ProgressManager.K_BACKLOG)}')
+        self.log(f'PROCESSING: {ProgressManager.get(ProgressManager.K_PROCESSING)}')
+        self.log(f'DONE: {ProgressManager.get(ProgressManager.K_DONE)}')
 
-        # for f in filesdict:
-        #     filestat = FileStat(data=f)
-        #     print("> file_name: {}, file_size: {}, range_pos: {}".format(filestat.file_name, filestat.file_size, filestat.range_pos))
+        # configファイルがローカルにある場合はロード
+        jsondata = open(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json'),'r')
+        filesdict = json.load(jsondata)
 
-        # files = []
-        # files.extend([
-        #     FileStat(data=f)
-        #     for f in filesdict
-        # ])
+        for f in filesdict:
+            filestat = FileStat(data=f)
+            print("> file_name: {}, file_size: {}, range_pos: {}".format(filestat.file_name, filestat.file_size, filestat.range_pos))
 
-        # self.store = LocalFileStore(files)
-        # self.process_file_no = 0
+        files = []
+        files.extend([
+            FileStat(data=f)
+            for f in filesdict
+        ])
 
-        # # ローカルファイルを走査
-        # for filestat in self.file_store.files:
-        #     # 処理中のファイル数
-        #     self.process_file_no += 1
-        #     # 処理中のファイル
-        #     self.current_file = filestat
-        #     self.log(filestat.file_name)
+        self.file_store = LocalFileStore(files)
+        self.process_file_no = 0
+
+        # ローカルファイルを走査
+        for filestat in self.file_store.files:
+            # 処理中のファイル数
+            self.process_file_no += 1
+            # 処理中のファイル
+            self.current_file = filestat
+            self.log(filestat.file_name)
 
         self.log("全てのファイルの処理が完了しました。")
 

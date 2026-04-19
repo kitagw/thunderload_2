@@ -8,18 +8,20 @@ Log = autoclass('android.util.Log')
 
 TAG = 'SERVICE_DEBUG'
 
-Log.i(TAG, "===== Service Python Script is Starting! =====")
-
-tService = ThunderloadService()
+tService = None
 
 try:
+    tService = ThunderloadService()
+
     # ここにこれまでのレシーバー登録処理などを記述
-    Log.i(TAG, "Initializing Receiver...")
+    tService.log("===== Service Python Script is Starting! =====")
+    # tService.log("os.getcwd() = {}".format(os.getcwd()))
+    # tService.log("sys.path = {}".format(sys.path))
     
     start_time = int(time.time())
     counter = 0
 
-    tService.update_notification(counter)
+    tService.update_notification(999)
     tService.run_upload()
 
     # while True:

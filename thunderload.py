@@ -23,8 +23,7 @@ from kivymd.uix.screen import MDScreen
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.widget import MDWidget
 from textfield4ja import TextField_JA
-#import time
-from time import sleep
+from progressmanager import ProgressManager
 
 # Android APIのインポート（Linux上ではエラーになるため、try-exceptで囲む）
 try:
@@ -53,20 +52,8 @@ except ImportError:
     Intent, LocalBroadcastManager, PythonActivity, currentActivity, Service, IntentFilter = [Dummy()] * 6
     print("Running in desktop environment. Android APIs are mocked.")
 
-# ベースとなるパスの決定
-if platform == 'android':
-    BASE = os.environ['ANDROID_PRIVATE']
-else:
-    BASE = os.path.abspath('./resources')
-
-# 各ステータス用フォルダのパス
-PROGRESS_BASE = os.path.join(BASE, 'progress')
-BACKLOG = os.path.join(PROGRESS_BASE, 'backlog')
-PROCESSING = os.path.join(PROGRESS_BASE, 'processing')
-DONE = os.path.join(PROGRESS_BASE, 'done')
-
 # アプリ起動時に一度だけ呼ぶ
-for p in [BACKLOG, PROCESSING, DONE]:
+for p in [ProgressManager.get(ProgressManager.K_BACKLOG), ProgressManager.get(ProgressManager.K_PROCESSING), ProgressManager.get(ProgressManager.K_DONE)]:
     if not os.path.exists(p):
         os.makedirs(p, exist_ok=True)
         print(f"DEBUG: Created directory: {p}")
@@ -283,10 +270,10 @@ class ThunderloadWidget(MDWidget):
         # ファイルスクリーン初期化
         self.init_file_screen()
 
-        Log.info(f'PROGRESS_BASE: {PROGRESS_BASE}')
-        Log.info(f'BACKLOG: {BACKLOG}')
-        Log.info(f'PROCESSING: {PROCESSING}')
-        Log.info(f'DONE: {DONE}')
+        Log.info(f'PROGRESS_BASE: {ProgressManager.get(ProgressManager.K_PROGRESS_BASE)}')
+        Log.info(f'BACKLOG: {ProgressManager.get(ProgressManager.K_BACKLOG)}')
+        Log.info(f'PROCESSING: {ProgressManager.get(ProgressManager.K_PROCESSING)}')
+        Log.info(f'DONE: {ProgressManager.get(ProgressManager.K_DONE)}')
 
     # 権限リクエスト（通知、写真と動画の権限）
     def request_permissions(self):
@@ -390,7 +377,7 @@ class ThunderloadWidget(MDWidget):
             request_permissions([
                 Permission.INTERNET, 
                 Permission.WAKE_LOCK, 
-                Permission            .FOREGROUND_SERVICE
+                Permission.FOREGROUND_SERVICE
             ])
             Log.info('権限リクエスト完了')
 
@@ -461,10 +448,10 @@ class ThunderloadWidget(MDWidget):
             case Action.UPDATE:
                 start_time_str = intent.getStringExtra('start_time')
                 counter_str = intent.getStringExtra('counter')
-                Log.info('ブロードキャスト受信: {} {} {}'.format(intent.getAction(), start_time_str, counter_str))
+                Log.info('<BCUpdate> {} {}'.format(start_time_str, counter_str))
             case Action.LOG:
                 log_text_str = intent.getStringExtra('log_text')
-                Log.info('ブロードキャスト受信: {} {}'.format(intent.getAction(), log_text_str))
+                Log.info('<BCLog> {}'.format(log_text_str))
             case _:
                 pass
     

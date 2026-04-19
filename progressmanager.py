@@ -14,8 +14,10 @@ class ProgressManager():
         # ベースとなるパスの決定
         if platform == 'android':
             BASE = os.environ['ANDROID_PRIVATE']
+            if BASE.endswith('/app'):
+                BASE = os.path.dirname(BASE) # これで1つ上の /files フォルダに戻る
         else:
-            BASE = os.path.abspath('./resources')
+            BASE = '/home/kitagawa/onedrive/vscode/python/thunderload_2/resources'
 
         # 各ステータス用フォルダのパス
         ProgressManager.items[ProgressManager.K_PROGRESS_BASE] = os.path.join(BASE, 'progress')

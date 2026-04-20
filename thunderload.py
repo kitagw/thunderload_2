@@ -250,7 +250,7 @@ class ThunderloadWidget(MDWidget):
     def on_kv_post(self, *args, **kwargs):
         super().on_kv_post(*args, **kwargs)
         # ログハンドラ設定
-        Log.handler(self.add_log)
+        Log.handler(self.add_log, 'M')
         # DriveClient初期化
         try:
             Log.info('DriveClient初期化中...')
@@ -316,19 +316,18 @@ class ThunderloadWidget(MDWidget):
         app.progress_color = [1, 1, 0, 1]
         app.progress_value = 0
 
-    def add_log(self, level, color, log_text):
-        print("DEBUG add_log: {}, {}, {}".format(level, color, log_text))
+    def add_log(self, level, color, process_name, log_text):
         # UI スレッド外から呼ばれた場合は UI スレッドで実行する
         if threading.current_thread() is not threading.main_thread():
-            Clock.schedule_once(lambda dt: self.add_log(level, color, log_text), 0)
+            Clock.schedule_once(lambda dt: self.add_log(level, color, process_name, log_text), 0)
             return
 
         date_str = datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
 
         self.ids.log_screen.ids.rv.data.append({
             'markup': True,
-            'text': '{} &bl;[color={}]{}[/color]&br;\n{}'.format(
-                date_str, color, level, escape_markup(log_text),
+            'text': '{} &bl;[color={}]{}[/color]&br; &bl;{}&br;\n{}'.format(
+                date_str, color, level, process_name, escape_markup(log_text),
             ),
         })
 
@@ -363,7 +362,6 @@ class ThunderloadWidget(MDWidget):
     def setup_android_and_start_service(self, dt):
         # 1. 既に起動済みなら、何もしないで帰る
         if hasattr(self, 'service_started') and self.service_started:
-            print("DEBUG: Service already started. Skipping setup.")
             Log.info('サービスは既に起動済みです。セットアップをスキップします。')
             return
 
@@ -407,7 +405,6 @@ class ThunderloadWidget(MDWidget):
 
             # 5. 最後に「起動済みフラグ」を立てる
             self.service_started = True
-            print("DEBUG: Receiver registered and Service started.")
             Log.info('レシーバー登録とサービス開始完了')
 
     # ★★★サービス開始
@@ -438,20 +435,22 @@ class ThunderloadWidget(MDWidget):
 
             # サービスの開始
             currentActivity.startForegroundService(service_intent)
-            print("DEBUG: Started service with all required JNI extras.")
+            Log.info("DEBUG: Started service with all required JNI extras.")
 
     def on_broadcast_received(self, context, intent):
         """ブロードキャストを受信した時のコールバック"""
         # intent からデータを取り出してUIを更新
-        print("DEBUG: on_broadcast_received") # 追加
         match intent.getAction():
             case Action.UPDATE:
                 start_time_str = intent.getStringExtra('start_time')
                 counter_str = intent.getStringExtra('counter')
                 Log.info('<BCUpdate> {} {}'.format(start_time_str, counter_str))
             case Action.LOG:
+                level_str = intent.getStringExtra('level')
+                process_name_str = intent.getStringExtra('process_name')
+                color_str = intent.getStringExtra('color')
                 log_text_str = intent.getStringExtra('log_text')
-                Log.info('<BCLog> {}'.format(log_text_str))
+                self.add_log(level_str, color_str, process_name_str, log_text_str)
             case _:
                 pass
     

@@ -2,12 +2,12 @@ import json
 import os
 from action import Action
 from jnius import autoclass # type: ignore
+from log import Log
 from time import sleep
 from filemanager import FileStat, LocalFileStore
 from progressmanager import ProgressManager
 
 # Javaクラスのインポート
-Log = autoclass('android.util.Log')
 PythonService = autoclass('org.kivy.android.PythonService')
 Context = autoclass('android.content.Context')
 Intent = autoclass('android.content.Intent')
@@ -18,8 +18,6 @@ NotificationChannel = autoclass('android.app.NotificationChannel')
 NotificationManager = autoclass('android.app.NotificationManager')
 PowerManager = autoclass('android.os.PowerManager')
 String = autoclass('java.lang.String')
-
-TAG = 'SERVICE_DEBUG'
 
 # 通知IDを定数にしておくと間違いがありません
 NOTIFICATION_ID = 1
@@ -39,16 +37,16 @@ class ThunderloadService():
         self.acquire_wakelock()
 
     def setup_foreground_service(self):
-        Log.i(TAG, "setup_foreground_service - 1-1")
+        Log.info("setup_foreground_service - 1-1")
         # 1. 通知チャンネルの作成 (Android 8.0以上必須)
         importance = NotificationManager.IMPORTANCE_LOW
         channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance)
         
-        Log.i(TAG, "setup_foreground_service - 1a-1")
+        Log.info("setup_foreground_service - 1a-1")
         notification_manager = self.service.getSystemService(Context.NOTIFICATION_SERVICE)
         notification_manager.createNotificationChannel(channel)
 
-        Log.i(TAG, "setup_foreground_service - 2-1")
+        Log.info("setup_foreground_service - 2-1")
         # 2. 通知をタップしたときにアプリを開く設定
         app_context = self.service.getApplicationContext()
         app_intent = Intent(app_context, autoclass('org.kivy.android.PythonActivity'))
@@ -59,7 +57,7 @@ class ThunderloadService():
 
         pending_intent = PendingIntent.getActivity(app_context, 0, app_intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE)
 
-        Log.i(TAG, "setup_foreground_service - 3-1")
+        Log.info("setup_foreground_service - 3-1")
         # 3. 通知の構築
         builder = NotificationBuilder(app_context, CHANNEL_ID)
         builder.setContentTitle("サービス実行中")
@@ -68,7 +66,7 @@ class ThunderloadService():
         builder.setContentIntent(pending_intent)
         notification = builder.build()
 
-        Log.i(TAG, "setup_foreground_service - 4-1")
+        Log.info("setup_foreground_service - 4-1")
         # 4. フォアグラウンドサービスとして開始
         # 第1引数は通知ID（0以外）、第2引数は通知オブジェクト
         self.service.startForeground(NOTIFICATION_ID, notification)
@@ -84,15 +82,7 @@ class ThunderloadService():
         if self.wakelock and self.wakelock.isHeld():
             self.wakelock.release()
             self.wakelock = None
-            print("DEBUG: CPUを解放しました。おやすみなさい。")
-
-    # def start_service(self):
-    #     try:
-    #         # 2. アップロードのメインループ実行
-    #         self.run_upload()
-    #     finally:
-    #         # 3. 何があっても（エラーが起きても）最後はCPUを解放する
-    #         self.stop_service()
+            Log.info("DEBUG: CPUを解放しました。おやすみなさい。")
 
     def stop_service(self):
         # WakeLockを解除
@@ -104,12 +94,12 @@ class ThunderloadService():
         self.service.stopSelf()
 
     def run_upload(self):
-        self.log("ファイルのアップロードを開始します。")
+        Log.info("ファイルのアップロードを開始します。")
 
-        self.log(f'PROGRESS_BASE: {ProgressManager.get(ProgressManager.K_PROGRESS_BASE)}')
-        self.log(f'BACKLOG: {ProgressManager.get(ProgressManager.K_BACKLOG)}')
-        self.log(f'PROCESSING: {ProgressManager.get(ProgressManager.K_PROCESSING)}')
-        self.log(f'DONE: {ProgressManager.get(ProgressManager.K_DONE)}')
+        Log.info(f'PROGRESS_BASE: {ProgressManager.get(ProgressManager.K_PROGRESS_BASE)}')
+        Log.info(f'BACKLOG: {ProgressManager.get(ProgressManager.K_BACKLOG)}')
+        Log.info(f'PROCESSING: {ProgressManager.get(ProgressManager.K_PROCESSING)}')
+        Log.info(f'DONE: {ProgressManager.get(ProgressManager.K_DONE)}')
 
         # configファイルがローカルにある場合はロード
         jsondata = open(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json'),'r')
@@ -117,7 +107,7 @@ class ThunderloadService():
 
         for f in filesdict:
             filestat = FileStat(data=f)
-            print("> file_name: {}, file_size: {}, range_pos: {}".format(filestat.file_name, filestat.file_size, filestat.range_pos))
+            Log.info("> file_name: {}, file_size: {}".format(filestat.file_name, filestat.file_size))
 
         files = []
         files.extend([
@@ -134,9 +124,9 @@ class ThunderloadService():
             self.process_file_no += 1
             # 処理中のファイル
             self.current_file = filestat
-            self.log(filestat.file_name)
+            Log.info(f"Processing file: {filestat.file_name}")
 
-        self.log("全てのファイルの処理が完了しました。")
+        Log.info("全てのファイルの処理が完了しました。")
 
     def send_broadcast(self, start_time, counter):
         """メインアプリへデータをブロードキャストする"""
@@ -148,30 +138,34 @@ class ThunderloadService():
             intent.putExtra('counter', String(str(counter)))
 
             # ログ確認用
-            Log.i(TAG, f"START Sent start_time={start_time}, counter={counter}")
+            Log.info(f"START Sent start_time={start_time}, counter={counter}")
             # サービス自身のsendBroadcastメソッドを使用
             self.service.sendBroadcast(intent)
             # ログ確認用
-            Log.i(TAG, f"END Sent start_time={start_time}, counter={counter}")
+            Log.info(f"END Sent start_time={start_time}, counter={counter}")
         except Exception as e:
-            Log.i(TAG, f"Exception: {e}")
+            Log.error(f"Exception: {e}")
 
-    def log(self, log_text):
+    def send_log(self, level, color, process_name, log_text):
+        """メインアプリへログをブロードキャストする"""
         try:
             intent = Intent(Action.LOG)
             # 自分のアプリ内だけに送信することを明示（これが重要！）
             intent.setPackage(self.service.getPackageName())
+            intent.putExtra('level', String(str(level)))
+            intent.putExtra('color', String(str(color)))
+            intent.putExtra('process_name', String(str(process_name)))
             intent.putExtra('log_text', String(str(log_text)))
 
             # ログ確認用
             self.service.sendBroadcast(intent)
         except Exception as e:
-            Log.i(TAG, f"Exception: {e}")
+            pass
 
     def update_notification(self, counter):
         """通知の中身を更新する"""
         try:
-            self.log(f"update_notification called with counter={counter}")
+            Log.info(f"update_notification called with counter={counter}")
 
             app_context = self.service.getApplicationContext()
             
@@ -199,8 +193,7 @@ class ThunderloadService():
             notification_manager = self.service.getSystemService(Context.NOTIFICATION_SERVICE)
             notification_manager.notify(NOTIFICATION_ID, notification)
 
-            self.log(f"update_notification successfully updated with counter={counter}")
+            Log.info(f"update_notification successfully updated with counter={counter}")
 
         except Exception as e:
-            Log.e(TAG, f"Notification update failed: {e}")
-            self.log(f"Notification update failed: {e}")
+            Log.error(f"Notification update failed: {e}")

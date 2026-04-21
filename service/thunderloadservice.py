@@ -146,15 +146,15 @@ class ThunderloadService():
         except Exception as e:
             Log.error(f"Exception: {e}")
 
-    def send_log(self, level, color, process_name, log_text):
+    def send_log(self, process_name, level, color, log_text):
         """メインアプリへログをブロードキャストする"""
         try:
             intent = Intent(Action.LOG)
             # 自分のアプリ内だけに送信することを明示（これが重要！）
             intent.setPackage(self.service.getPackageName())
+            intent.putExtra('process_name', String(str(process_name)))
             intent.putExtra('level', String(str(level)))
             intent.putExtra('color', String(str(color)))
-            intent.putExtra('process_name', String(str(process_name)))
             intent.putExtra('log_text', String(str(log_text)))
 
             # ログ確認用

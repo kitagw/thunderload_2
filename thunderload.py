@@ -316,18 +316,18 @@ class ThunderloadWidget(MDWidget):
         app.progress_color = [1, 1, 0, 1]
         app.progress_value = 0
 
-    def add_log(self, level, color, process_name, log_text):
+    def add_log(self, process_name, level, color, log_text):
         # UI スレッド外から呼ばれた場合は UI スレッドで実行する
         if threading.current_thread() is not threading.main_thread():
-            Clock.schedule_once(lambda dt: self.add_log(level, color, process_name, log_text), 0)
+            Clock.schedule_once(lambda dt: self.add_log(process_name, level, color, log_text), 0)
             return
 
         date_str = datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
 
         self.ids.log_screen.ids.rv.data.append({
             'markup': True,
-            'text': '{} &bl;[color={}]{}[/color]&br; &bl;{}&br;\n{}'.format(
-                date_str, color, level, process_name, escape_markup(log_text),
+            'text': '{} &bl;{}&br; &bl;[color={}]{}[/color]&br;\n{}'.format(
+                date_str, process_name, color, level, escape_markup(log_text),
             ),
         })
 
@@ -446,11 +446,11 @@ class ThunderloadWidget(MDWidget):
                 counter_str = intent.getStringExtra('counter')
                 Log.info('<BCUpdate> {} {}'.format(start_time_str, counter_str))
             case Action.LOG:
-                level_str = intent.getStringExtra('level')
                 process_name_str = intent.getStringExtra('process_name')
+                level_str = intent.getStringExtra('level')
                 color_str = intent.getStringExtra('color')
                 log_text_str = intent.getStringExtra('log_text')
-                self.add_log(level_str, color_str, process_name_str, log_text_str)
+                self.add_log(process_name_str, level_str, color_str, log_text_str)
             case _:
                 pass
     

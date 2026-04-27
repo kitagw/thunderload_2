@@ -30,9 +30,9 @@ try:
 
     #     counter += 1
 
-    Log.info("Service is running. Waiting for 30 seconds before stopping...")
-    time.sleep(30)
-    Log.info("30 seconds have passed. Stopping service now.")
+    # Log.info("Service is running. Waiting for 30 seconds before stopping...")
+    # time.sleep(30)
+    # Log.info("30 seconds have passed. Stopping service now.")
 
 except Exception as e:
     Log.error("Service crashed: " + str(e)) if tService else None

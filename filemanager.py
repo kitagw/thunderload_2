@@ -97,6 +97,11 @@ class FileStat:
     def date(self):
         return self.data[FileStat.K_DATE]
 
+    # プロパティ：アップロードの状態
+    @property
+    def status(self):
+        return self.data[FileStat.K_STATUS]
+
     # プロパティ：アップロード済のバイト位置
     @property
     def range_pos(self):
@@ -107,10 +112,20 @@ class FileStat:
         self.data[FileStat.K_STATUS] = FileStat.S_PROCESSING
         self.data[FileStat.K_TRY_COUNT] = try_count
         self.data[FileStat.K_RANGE_POS] = 0
+        # backlogファイルをprocessingファイルに移動する
+        backlog_path = os.path.join(ProgressManager.get(ProgressManager.K_BACKLOG), self.file_name)
+        processing_path = os.path.join(ProgressManager.get(ProgressManager.K_PROCESSING), self.file_name)
+        if os.path.exists(backlog_path):
+            os.rename(backlog_path, processing_path)
 
     # 状態遷移：完了
     def to_stat_successful(self):
         self.data[FileStat.K_STATUS] = FileStat.S_FINISHED
+        # processingファイルをdoneファイルに移動する
+        processing_path = os.path.join(ProgressManager.get(ProgressManager.K_PROCESSING), self.file_name)
+        done_path = os.path.join(ProgressManager.get(ProgressManager.K_DONE), self.file_name)
+        if os.path.exists(processing_path):
+            os.rename(processing_path, done_path)
 
     # 状態遷移：失敗
     def to_stat_failed(self):
@@ -233,7 +248,33 @@ class LocalFileStore:
         with open(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json'), 'w') as f2:
             json.dump([f.data for f in self.files], f2, indent=2, ensure_ascii=False)
 
+        # progressフォルダのbacklog、processing、doneの進捗ファイル郡を初期化する
+        for folder in [ProgressManager.K_BACKLOG, ProgressManager.K_PROCESSING, ProgressManager.K_DONE]:
+            folder_path = ProgressManager.get(folder)
+            # # フォルダがなければ作成する
+            # if not os.path.exists(folder_path):
+            #     os.makedirs(folder_path)
+            # フォルダ内のファイルを削除する
+            for f in os.listdir(folder_path):
+                file_path = os.path.join(folder_path, f)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+
         # アップロード対象のファイルの名称で、backlogフォルダに空ファイルを作成する
         for f in self.files:
             with open(os.path.join(ProgressManager.get(ProgressManager.K_BACKLOG), f.file_name), 'w') as f2:
                 pass
+
+    # 進捗ファイル郡を読み込み
+    def load_progress_files(self):
+        # backlog、processing、doneの進捗ファイル郡の存在状況から進捗（FileStat.K_STATUS）を初期化する
+        for f in self.files:
+            if os.path.exists(os.path.join(ProgressManager.get(ProgressManager.K_BACKLOG), f.file_name)):
+                f.data[FileStat.K_STATUS] = FileStat.S_UNPROCESSED
+            elif os.path.exists(os.path.join(ProgressManager.get(ProgressManager.K_PROCESSING), f.file_name)):
+                f.data[FileStat.K_STATUS] = FileStat.S_PROCESSING
+            elif os.path.exists(os.path.join(ProgressManager.get(ProgressManager.K_DONE), f.file_name)):
+                f.data[FileStat.K_STATUS] = FileStat.S_FINISHED
+            else:
+                f.data[FileStat.K_STATUS] = FileStat.S_UNPROCESSED
+

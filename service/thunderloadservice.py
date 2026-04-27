@@ -105,17 +105,16 @@ class ThunderloadService():
         jsondata = open(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json'),'r')
         filesdict = json.load(jsondata)
 
-        for f in filesdict:
-            filestat = FileStat(data=f)
-            Log.info("> file_name: {}, file_size: {}".format(filestat.file_name, filestat.file_size))
-
+        # ローカルファイル保管庫を初期化
         files = []
         files.extend([
             FileStat(data=f)
             for f in filesdict
         ])
-
         self.file_store = LocalFileStore(files)
+        # 進捗ファイル郡の状況から進捗を初期化する
+        self.file_store.load_progress_files()
+
         self.process_file_no = 0
 
         # ローカルファイルを走査
@@ -124,25 +123,30 @@ class ThunderloadService():
             self.process_file_no += 1
             # 処理中のファイル
             self.current_file = filestat
-            Log.info(f"Processing file: {filestat.file_name}")
+
+            # 進捗のテスト用に、状態を変化させる（実際のアップロード処理はここに実装する）
+            filestat.to_stat_progress(0)
+            self.send_filestat(filestat, self.process_file_no)
+            Log.info(f"開始: {filestat.file_name}")
+            sleep(3)
+            filestat.to_stat_successful()
+            self.send_filestat(filestat, self.process_file_no)
+            Log.info(f"完了: {filestat.file_name}")
+            sleep(1)
 
         Log.info("全てのファイルの処理が完了しました。")
 
-    def send_broadcast(self, start_time, counter):
-        """メインアプリへデータをブロードキャストする"""
+    def send_filestat(self, filestat, file_no):
+        """メインアプリへFileStatをブロードキャストする"""
         try:
             intent = Intent(Action.UPDATE)
             # 自分のアプリ内だけに送信することを明示（これが重要！）
             intent.setPackage(self.service.getPackageName())
-            intent.putExtra('start_time', String(str(start_time)))
-            intent.putExtra('counter', String(str(counter)))
-
-            # ログ確認用
-            Log.info(f"START Sent start_time={start_time}, counter={counter}")
-            # サービス自身のsendBroadcastメソッドを使用
+            # FileStatオブジェクトをJSONに変換して送る
+            intent.putExtra('filestat', String(json.dumps(filestat.data)))
+            intent.putExtra('file_no', String(str(file_no)))
+            # ブロードキャストを送信
             self.service.sendBroadcast(intent)
-            # ログ確認用
-            Log.info(f"END Sent start_time={start_time}, counter={counter}")
         except Exception as e:
             Log.error(f"Exception: {e}")
 
@@ -156,8 +160,7 @@ class ThunderloadService():
             intent.putExtra('level', String(str(level)))
             intent.putExtra('color', String(str(color)))
             intent.putExtra('log_text', String(str(log_text)))
-
-            # ログ確認用
+            # ブロードキャストを送信
             self.service.sendBroadcast(intent)
         except Exception as e:
             pass

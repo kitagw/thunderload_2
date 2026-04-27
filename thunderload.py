@@ -1,6 +1,7 @@
 #-*- coding: utf-8 -*-
 
 import datetime
+import json
 import threading
 import time
 import os
@@ -442,9 +443,27 @@ class ThunderloadWidget(MDWidget):
         # intent からデータを取り出してUIを更新
         match intent.getAction():
             case Action.UPDATE:
-                start_time_str = intent.getStringExtra('start_time')
-                counter_str = intent.getStringExtra('counter')
-                Log.info('<BCUpdate> {} {}'.format(start_time_str, counter_str))
+                filestat_json = intent.getStringExtra('filestat')
+                file_no_str = intent.getStringExtra('file_no')
+                if filestat_json and file_no_str:
+                    try:
+                        filestat_data = json.loads(filestat_json)
+                        filestat = FileStat(data=filestat_data)
+                        file_no = int(file_no_str)
+                        Log.info(f"Received UPDATE for file_no={file_no}, filestat.file_name={filestat.file_name}")
+
+                        # 処理中のファイルNoを更新
+                        self.process_file_no = file_no
+                        # 処理中のファイル
+                        self.current_file = filestat
+
+                        # 進捗更新は、処理中のファイルに対してのみ行う（完了や失敗の更新は on_complete や on_error で行う）
+                        if filestat.status == FileStat.S_PROCESSING:
+                            Clock.schedule_once(self.on_progress)
+
+                        self._refresh_file_item(filestat)
+                    except Exception as e:
+                        Log.error(f"Failed to parse filestat or file_no: {e}")
             case Action.LOG:
                 process_name_str = intent.getStringExtra('process_name')
                 level_str = intent.getStringExtra('level')
@@ -559,13 +578,19 @@ class ThunderloadWidget(MDWidget):
 
     # ファイルアイテム更新
     def _refresh_file_item(self, filestat=None):
+        # UI スレッド外から呼ばれた場合は UI スレッドで実行する
+        if threading.current_thread() is not threading.main_thread():
+            Clock.schedule_once(lambda dt: self._refresh_file_item(filestat), 0)
+            return
+
         # filestat が指定されればそのファイルのリストアイテムを更新する
         if filestat is None:
             idx = self.process_file_no - 1
             item = self.current_file
         else:
             try:
-                idx = self.file_store.files.index(filestat)
+                # ファイル名でインデックスを検索する（filestat オブジェクトはサービス側で新規生成されるため、同一のオブジェクトが存在しない）
+                idx = next(i for i, f in enumerate(self.file_store.files) if f.file_name == filestat.file_name)
             except ValueError:
                 # filestat が見つからない場合は何もしない
                 return

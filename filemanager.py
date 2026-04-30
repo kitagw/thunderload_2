@@ -45,6 +45,16 @@ class FileStat:
     # ：失敗
     S_FAILED = 'FAILED'
 
+    # イベント
+    # ：ファイル処理の進捗
+    E_FILE_PROGRESS = 'FILE_PROGRESS'
+    # ：アップロードの進捗
+    E_UPLOAD_PROGRESS = 'UPLOAD_PROGRESS'
+    # ：ファイル処理の完了
+    E_COMPLETED = 'COMPLETED'
+    # ：エラー
+    E_ERROR = 'ERROR'
+
     # 1MByteのサイズ
     MBYTE_SIZE = 1048576 #1Mbyte
 
@@ -106,6 +116,10 @@ class FileStat:
     @property
     def range_pos(self):
         return self.data[FileStat.K_RANGE_POS]
+
+    # ファイルStatを別のFileStatから更新する
+    def update_from(self, other):
+        self.data.update(other.data)
 
     # 状態遷移：処理中
     def to_stat_progress(self, try_count):
@@ -277,4 +291,11 @@ class LocalFileStore:
                 f.data[FileStat.K_STATUS] = FileStat.S_FINISHED
             else:
                 f.data[FileStat.K_STATUS] = FileStat.S_UNPROCESSED
+    
+    # 進捗ファイル郡の状態を各フォルダのファイル数でログ出力する
+    def log_progress_files(self):
+        backlog_count = len(os.listdir(ProgressManager.get(ProgressManager.K_BACKLOG)))
+        processing_count = len(os.listdir(ProgressManager.get(ProgressManager.K_PROCESSING)))
+        done_count = len(os.listdir(ProgressManager.get(ProgressManager.K_DONE)))
+        Log.info('進捗ファイル郡の状態：backlog={}, processing={}, done={}'.format(backlog_count, processing_count, done_count))
 

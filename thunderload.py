@@ -443,23 +443,33 @@ class ThunderloadWidget(MDWidget):
         # intent からデータを取り出してUIを更新
         match intent.getAction():
             case Action.UPDATE:
+                self.file_store.log_progress_files()  # 進捗ファイル郡の状態をログ出力する
                 filestat_json = intent.getStringExtra('filestat')
                 file_no_str = intent.getStringExtra('file_no')
-                if filestat_json and file_no_str:
+                event_str = intent.getStringExtra('event')
+                if filestat_json and file_no_str and event_str:
                     try:
                         filestat_data = json.loads(filestat_json)
                         filestat = FileStat(data=filestat_data)
                         file_no = int(file_no_str)
-                        Log.info(f"Received UPDATE for file_no={file_no}, filestat.file_name={filestat.file_name}")
+                        event = event_str
+                        Log.info(f"Received UPDATE for file_no={file_no}, filestat.file_name={filestat.file_name}, event={event}")
 
                         # 処理中のファイルNoを更新
                         self.process_file_no = file_no
                         # 処理中のファイル
                         self.current_file = filestat
+                        # file_store の該当ファイルの状態を更新する（これにより、UIスレッドで正しい FileStat オブジェクトを参照できるようになる）
+                        for f in self.file_store.files:
+                            if f.file_name == filestat.file_name:
+                                f.update_from(filestat)
+                                break
 
                         # 進捗更新は、処理中のファイルに対してのみ行う（完了や失敗の更新は on_complete や on_error で行う）
-                        if filestat.status == FileStat.S_PROCESSING:
-                            Clock.schedule_once(self.on_progress)
+                        if event == FileStat.E_FILE_PROGRESS:
+                            Clock.schedule_once(self.on_file_progress)
+                        elif event == FileStat.E_UPLOAD_PROGRESS:
+                            Clock.schedule_once(lambda dt: self.on_upload_progress(filestat, filestat.range_pos))
 
                         self._refresh_file_item(filestat)
                     except Exception as e:
@@ -500,7 +510,7 @@ class ThunderloadWidget(MDWidget):
                 # 状態：未→処理中（i回目）
                 filestat.to_stat_progress(i)
                 # 通知：処理中
-                Clock.schedule_once(self.on_progress)
+                Clock.schedule_once(self.on_file_progress)
                 try:
                     # アップロード実行
                     Log.info('{}：処理中({})...'.format(filestat.file_name, i))
@@ -532,7 +542,7 @@ class ThunderloadWidget(MDWidget):
         Log.info('アップロード完了')
 
     # 処理中イベント処理
-    def on_progress(self, dt):
+    def on_file_progress(self, dt):
         self.ids.file_screen.ids.msg.text = 'アップロード中... ({}/{})'.format(self.process_file_no, self.file_store.file_count)
         # ファイルアイテム更新
         self._refresh_file_item()

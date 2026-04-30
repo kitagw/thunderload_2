@@ -126,17 +126,23 @@ class ThunderloadService():
 
             # 進捗のテスト用に、状態を変化させる（実際のアップロード処理はここに実装する）
             filestat.to_stat_progress(0)
-            self.send_filestat(filestat, self.process_file_no)
+            self.send_filestat(filestat, self.process_file_no, FileStat.E_FILE_PROGRESS)
             Log.info(f"開始: {filestat.file_name}")
-            sleep(3)
+
+            # 進捗テスト用に、アップロードバイト数を変化させる（実際のアップロード処理はここに実装する）
+            for pos in range(0, filestat.file_size + 1, filestat.file_size // 3):
+                filestat.uploading(pos)
+                self.send_filestat(filestat, self.process_file_no, FileStat.E_UPLOAD_PROGRESS)
+                Log.info(f"アップロード中: {filestat.file_name}, アップロード済みバイト数={pos}")
+                sleep(1)
+
             filestat.to_stat_successful()
-            self.send_filestat(filestat, self.process_file_no)
+            self.send_filestat(filestat, self.process_file_no, FileStat.E_COMPLETED)
             Log.info(f"完了: {filestat.file_name}")
-            sleep(1)
 
         Log.info("全てのファイルの処理が完了しました。")
 
-    def send_filestat(self, filestat, file_no):
+    def send_filestat(self, filestat, file_no, event):
         """メインアプリへFileStatをブロードキャストする"""
         try:
             intent = Intent(Action.UPDATE)
@@ -145,6 +151,7 @@ class ThunderloadService():
             # FileStatオブジェクトをJSONに変換して送る
             intent.putExtra('filestat', String(json.dumps(filestat.data)))
             intent.putExtra('file_no', String(str(file_no)))
+            intent.putExtra('event', String(str(event)))
             # ブロードキャストを送信
             self.service.sendBroadcast(intent)
         except Exception as e:

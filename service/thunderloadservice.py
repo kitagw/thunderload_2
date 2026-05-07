@@ -1,11 +1,12 @@
 import json
 import os
 from action import Action
+from driveclient import DriveClient
+from filemanager import FileStat, LocalFileStore
 from jnius import autoclass # type: ignore
 from log import Log
-from time import sleep
-from filemanager import FileStat, LocalFileStore
 from progressmanager import ProgressManager
+from time import sleep
 
 # Javaクラスのインポート
 PythonService = autoclass('org.kivy.android.PythonService')
@@ -90,10 +91,15 @@ class ThunderloadService():
             self._release_wakelock()
         
         # サービス自体を終了（これをしないと通知バーに残る）
-        # PythonService.mService.stopSelf() など
         self.service.stopSelf()
 
     def run_upload(self):
+        # アップロード進捗通知のコールバック
+        def on_upload_progress(file_no, filestat, range_pos):
+            Log.info(f"アップロード中: {filestat.file_name}, アップロード済みバイト数={range_pos}")
+            filestat.uploading(range_pos)
+            self.send_filestat(file_no, filestat, FileStat.E_UPLOAD_PROGRESS)
+
         Log.info("ファイルのアップロードを開始します。")
 
         Log.info(f'PROGRESS_BASE: {ProgressManager.get(ProgressManager.K_PROGRESS_BASE)}')
@@ -115,34 +121,57 @@ class ThunderloadService():
         # 進捗ファイル郡の状況から進捗を初期化する
         self.file_store.load_progress_files()
 
-        self.process_file_no = 0
+        # DriveClient初期化
+        try:
+            Log.info('DriveClient初期化中...')
+            self.client = DriveClient()
+            Log.info('DriveClient初期化完了')
+        except Exception as ex:
+            Log.error('DriveClient初期化失敗\n' + repr(ex))
+            return
 
         # ローカルファイルを走査
+        file_no = 0
         for filestat in self.file_store.files:
-            # 処理中のファイル数
-            self.process_file_no += 1
-            # 処理中のファイル
-            self.current_file = filestat
+            # 処理中のファイルNoを更新
+            file_no += 1
+            # MAX_TRY_COUNTまで試行する
+            for i in range(1, DriveClient.MAX_TRY_COUNT + 1):
+                # 状態：未→処理中（i回目）
+                filestat.to_stat_progress(i)
+                self.send_filestat(file_no, filestat, FileStat.E_FILE_PROGRESS)
+                Log.info(f"開始: {filestat.file_name}")
+                # 通知の内容を更新する
+                self.update_notification(file_no, filestat)
 
-            # 進捗のテスト用に、状態を変化させる（実際のアップロード処理はここに実装する）
-            filestat.to_stat_progress(0)
-            self.send_filestat(filestat, self.process_file_no, FileStat.E_FILE_PROGRESS)
-            Log.info(f"開始: {filestat.file_name}")
-
-            # 進捗テスト用に、アップロードバイト数を変化させる（実際のアップロード処理はここに実装する）
-            for pos in range(0, filestat.file_size + 1, filestat.file_size // 3):
-                filestat.uploading(pos)
-                self.send_filestat(filestat, self.process_file_no, FileStat.E_UPLOAD_PROGRESS)
-                Log.info(f"アップロード中: {filestat.file_name}, アップロード済みバイト数={pos}")
-                sleep(1)
-
-            filestat.to_stat_successful()
-            self.send_filestat(filestat, self.process_file_no, FileStat.E_COMPLETED)
-            Log.info(f"完了: {filestat.file_name}")
+                try:
+                    # アップロード実行
+                    Log.info('{}：処理中({})...'.format(filestat.file_name, i))
+                    # upload に渡すコールバックは filestat をキャプチャしたクロージャにする
+                    # これにより、UI スレッドで実行されるときに filestat が変わっていても
+                    # 正しい FileStat に対して進捗更新できる
+                    self.client.upload(filestat, lambda pos, fs=filestat: on_upload_progress(file_no, fs, pos))
+                    Log.info('{}：完了({})'.format(filestat.file_name, i))
+                    # 状態：処理中→完了
+                    filestat.to_stat_successful()
+                    self.send_filestat(file_no, filestat, FileStat.E_COMPLETED)
+                    break
+                except Exception as ex:
+                    Log.error('{}：失敗({})\n{}'.format(filestat.file_name, i, repr(ex)))
+                    # 最大試行回数
+                    if i == DriveClient.MAX_TRY_COUNT:
+                        # 状態：処理中→失敗
+                        filestat.to_stat_failed()
+                        # 通知：失敗
+                        self.send_filestat(file_no, filestat, FileStat.E_ERROR)
+                        return
+                    else:
+                        # リトライ時1秒ずつ遅延させる
+                        sleep(i)
 
         Log.info("全てのファイルの処理が完了しました。")
 
-    def send_filestat(self, filestat, file_no, event):
+    def send_filestat(self, file_no, filestat, event):
         """メインアプリへFileStatをブロードキャストする"""
         try:
             intent = Intent(Action.UPDATE)
@@ -172,10 +201,10 @@ class ThunderloadService():
         except Exception as e:
             pass
 
-    def update_notification(self, counter):
+    def update_notification(self, file_no, filestat):
         """通知の中身を更新する"""
         try:
-            Log.info(f"update_notification called with counter={counter}")
+            # Log.info(f"update_notification called with file_no={file_no}, filestat={filestat.file_name}")
 
             app_context = self.service.getApplicationContext()
             
@@ -189,9 +218,9 @@ class ThunderloadService():
 
             # 2. Builderで新しい通知テキストを設定
             builder = NotificationBuilder(app_context, CHANNEL_ID)
-            builder.setContentTitle("サービス稼働中")
-            # ここでカウンターを表示
-            builder.setContentText(f"現在のカウント: {counter} 秒経過") 
+            builder.setContentTitle(f"アップロード中... ({file_no}/{self.file_store.file_count})")
+            # ファイル名を通知の内容に設定
+            builder.setContentText(filestat.file_name) 
             builder.setSmallIcon(self.service.getApplicationInfo().icon)
             builder.setContentIntent(pending_intent)
             # 通知の音や振動を抑制する（更新のたびに鳴らないように）
@@ -203,7 +232,7 @@ class ThunderloadService():
             notification_manager = self.service.getSystemService(Context.NOTIFICATION_SERVICE)
             notification_manager.notify(NOTIFICATION_ID, notification)
 
-            Log.info(f"update_notification successfully updated with counter={counter}")
+            # Log.info(f"update_notification successfully updated with file_no={file_no}, filestat={filestat.file_name}")
 
         except Exception as e:
             Log.error(f"Notification update failed: {e}")

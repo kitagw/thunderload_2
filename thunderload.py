@@ -8,7 +8,7 @@ import os
 from action import Action
 from config import Config
 from log import Log
-# from driveclient import DriveClient
+from driveclient import DriveClient
 from filemanager import FileStat, LocalFileStore
 from kivy.clock import Clock
 from kivy.properties import ListProperty, NumericProperty, ObjectProperty, StringProperty
@@ -255,7 +255,7 @@ class ThunderloadWidget(MDWidget):
         # DriveClient初期化
         try:
             Log.info('DriveClient初期化中...')
-            # self.client = DriveClient()
+            self.client = DriveClient()
             Log.info('DriveClient初期化完了')
         except Exception as ex:
             Log.error('DriveClient初期化失敗\n' + repr(ex))
@@ -265,9 +265,8 @@ class ThunderloadWidget(MDWidget):
         self.request_permissions()
 
         # 設定画面にDriveClientを設定
-        # 
-        # self.ids.config_screen.client = self.client
-        # 
+        self.ids.config_screen.client = self.client
+
         # ファイルスクリーン初期化
         self.init_file_screen()
 
@@ -456,9 +455,9 @@ class ThunderloadWidget(MDWidget):
                         Log.info(f"Received UPDATE for file_no={file_no}, filestat.file_name={filestat.file_name}, event={event}")
 
                         # 処理中のファイルNoを更新
-                        self.process_file_no = file_no
+                        self.current_file_no = file_no
                         # 処理中のファイル
-                        self.current_file = filestat
+                        self.current_filestat = filestat
                         # file_store の該当ファイルの状態を更新する（これにより、UIスレッドで正しい FileStat オブジェクトを参照できるようになる）
                         for f in self.file_store.files:
                             if f.file_name == filestat.file_name:
@@ -483,67 +482,15 @@ class ThunderloadWidget(MDWidget):
             case _:
                 pass
     
-        # self.update_ui(context, intent)
-
     def on_stop(self):
         # アプリ終了時にレシーバーを停止（重要）
         if platform == 'android' and hasattr(self, 'br'):
             self.br.stop()
         super().on_stop()
 
-    # バックグラウンドプロセス
-    def background_process(self):
-        Log.info('アップロード開始')
-
-        self.process_file_no = 0
-
-        # ローカルファイルを走査
-        for filestat in self.file_store.files:
-            # 処理中のファイル数
-            self.process_file_no += 1
-            # 処理中のファイル
-            self.current_file = filestat
-
-            # MAX_TRY_COUNTまで試行する
-            #for i in range(1, DriveClient.MAX_TRY_COUNT + 1):
-            for i in range(1, 999 + 1):
-                # 状態：未→処理中（i回目）
-                filestat.to_stat_progress(i)
-                # 通知：処理中
-                Clock.schedule_once(self.on_file_progress)
-                try:
-                    # アップロード実行
-                    Log.info('{}：処理中({})...'.format(filestat.file_name, i))
-                    # upload に渡すコールバックは filestat をキャプチャしたクロージャにする
-                    # これにより、UI スレッドで実行されるときに current_file が変わっていても
-                    # 正しい FileStat に対して進捗更新できる
-                    self.client.upload(filestat, lambda pos, fs=filestat: self._upload_progress_from_thread(fs, pos))
-                    Log.info('{}：完了({})'.format(filestat.file_name, i))
-                    # # 状態：処理中→完了
-                    filestat.to_stat_successful()
-                    break
-                except Exception as ex:
-                    Log.error('{}：失敗({})\n{}'.format(filestat.file_name, i, repr(ex)))
-                    # 最大試行回数
-                    # if i == DriveClient.MAX_TRY_COUNT:
-                    if i == 999:
-                        # 状態：処理中→失敗
-                        filestat.to_stat_failed()
-                        # 通知：失敗
-                        Clock.schedule_once(self.on_error)
-                        return
-                    else:
-                        # リトライ時1秒ずつ遅延させる
-                        time.sleep(i)
-
-        # 通知：完了
-        Clock.schedule_once(self.on_complete)
-
-        Log.info('アップロード完了')
-
     # 処理中イベント処理
     def on_file_progress(self, dt):
-        self.ids.file_screen.ids.msg.text = 'アップロード中... ({}/{})'.format(self.process_file_no, self.file_store.file_count)
+        self.ids.file_screen.ids.msg.text = 'アップロード中... ({}/{})'.format(self.current_file_no, self.file_store.file_count)
         # ファイルアイテム更新
         self._refresh_file_item()
 
@@ -563,7 +510,7 @@ class ThunderloadWidget(MDWidget):
 
     # 完了イベント処理
     def on_complete(self, dt):
-        self.ids.file_screen.ids.msg.text = 'アップロード完了 ({}/{})'.format(self.process_file_no, self.file_store.file_count)
+        self.ids.file_screen.ids.msg.text = 'アップロード完了 ({}/{})'.format(self.current_file_no, self.file_store.file_count)
         # インジケーター：緑100
         from kivy.app import App
         app = App.get_running_app()
@@ -595,8 +542,8 @@ class ThunderloadWidget(MDWidget):
 
         # filestat が指定されればそのファイルのリストアイテムを更新する
         if filestat is None:
-            idx = self.process_file_no - 1
-            item = self.current_file
+            idx = self.current_file_no - 1
+            item = self.current_filestat
         else:
             try:
                 # ファイル名でインデックスを検索する（filestat オブジェクトはサービス側で新規生成されるため、同一のオブジェクトが存在しない）

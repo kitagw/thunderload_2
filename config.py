@@ -1,13 +1,14 @@
 import json
 import os
 from kivy.utils import platform 
+from log import Log
 
 '''
 設定管理
 '''
 class Config():
     # 設定保管先のファイルパス
-    CONFIG_JSON_PATH = os.environ['ANDROID_PRIVATE'] + '/config.json' if platform == 'android' else './resources/config.json'
+    CONFIG_JSON_PATH = None
     # ローカルパス
     K_LOCAL_PATH = 'local_path'
     # アップロードパス
@@ -20,6 +21,25 @@ class Config():
     items = None
     # ロック状態
     lock_stat = True
+
+    @classmethod
+    def _initialize_static(cls):
+        # ベースとなるパスの決定
+        if platform == 'android':
+            BASE = os.environ['ANDROID_PRIVATE']
+            if BASE.endswith('/app'):
+                BASE = os.path.dirname(BASE) # これで1つ上の /files フォルダに戻る
+        else:
+            BASE = '/home/kitagawa/onedrive/vscode/python/thunderload_2/resources'
+
+        Config.CONFIG_JSON_PATH = os.path.join(BASE, 'config.json')
+
+        if os.path.isfile(Config.CONFIG_JSON_PATH):
+            # configファイルがローカルにある場合はロード
+            jsondata = open(Config.CONFIG_JSON_PATH,'r')
+            Config.items = json.load(jsondata)
+        else:
+            Config.items = json.loads('{}')
 
     # 取得
     def get(key):
@@ -40,10 +60,4 @@ class Config():
     def change_lock():
         Config.lock_stat = not Config.lock_stat
 
-# 初期化
-if os.path.isfile(Config.CONFIG_JSON_PATH):
-    # configファイルがローカルにある場合はロード
-    jsondata = open(Config.CONFIG_JSON_PATH,'r')    
-    Config.items = json.load(jsondata)
-else:
-    Config.items = json.loads('{}')
+Config._initialize_static()

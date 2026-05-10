@@ -256,32 +256,18 @@ class ThunderloadWidget(MDWidget):
         try:
             Log.info('DriveClient初期化中...')
             self.client = DriveClient()
+            # 設定画面にDriveClientを設定
+            self.ids.config_screen.client = self.client
             Log.info('DriveClient初期化完了')
         except Exception as ex:
             Log.error('DriveClient初期化失敗\n' + repr(ex))
             return
 
-        # 権限リクエスト
-        self.request_permissions()
-
-        # 設定画面にDriveClientを設定
-        self.ids.config_screen.client = self.client
-
         # レシーバー登録
         self.regist_broadcast_receiver()
 
-        # ファイルスクリーン初期化
-        self.init_file_screen()
-
-        if self.resume_upload:
-            Log.info('前回の続きからアップロードを再開します')
-            # ボタン非活性化
-            # 更新ボタン
-            self.ids.file_screen.ids.refresh_button.disabled = True
-            # バックグラウンド★サービス開始
-            Clock.schedule_once(self.setup_android_and_start_service, 0)
-            # 最後に「起動済みフラグ」を立てる
-            self.service_started = True
+        # 権限リクエスト
+        self.request_permissions()
 
     # 権限リクエスト（通知、写真と動画の権限）
     def request_permissions(self):
@@ -297,6 +283,18 @@ class ThunderloadWidget(MDWidget):
         # 通知、写真と動画の権限のリクエストコールバックで画面を初期化する（権限がないとファイルが読めないため）
         self.init_file_screen()
 
+        if self.resume_upload:
+            Log.info('前回の続きからアップロードを再開します')
+            # ボタン非活性化
+            # 更新ボタン
+            self.ids.thunder_button.disabled = True
+            # バックグラウンド★サービス開始
+            Clock.schedule_once(self.setup_android_and_start_service, 0)
+        else:
+            if self.file_store.file_count > 0:
+                # 稲妻ボタン活性化
+                self.ids.thunder_button.disabled = False
+            
     # ファイルスクリーン初期化
     def init_file_screen(self):
         # filelist.jsonファイルがローカルにある場合はロード
@@ -328,11 +326,11 @@ class ThunderloadWidget(MDWidget):
                 for file in self.file_store.files
             )
             self.ids.file_screen.ids.msg.text = 'ファイル数：{}'.format(self.file_store.file_count)
-            self.ids.thunder_button.disabled = self.resume_upload # 続きからアップロード再開の場合は稲妻ボタンを非活性化、そうでない場合は活性化
+            # self.ids.thunder_button.disabled = self.resume_upload
             Log.info('ローカルファイル読込完了')
         else:
             self.ids.file_screen.ids.msg.text = 'ファイルなし'
-            self.ids.thunder_button.disabled = True
+            # self.ids.thunder_button.disabled = True
             Log.warn('ローカルファイルなし')
 
         # インジケーター：黄0 を App プロパティ経由で設定

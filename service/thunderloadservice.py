@@ -107,7 +107,7 @@ class ThunderloadService():
         Log.info(f'PROCESSING: {ProgressManager.get(ProgressManager.K_PROCESSING)}')
         Log.info(f'DONE: {ProgressManager.get(ProgressManager.K_DONE)}')
 
-        # configファイルがローカルにある場合はロード
+        # filelist.jsonファイルがローカルにある場合はロード
         jsondata = open(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json'),'r')
         filesdict = json.load(jsondata)
 
@@ -135,6 +135,11 @@ class ThunderloadService():
         for filestat in self.file_store.files:
             # 処理中のファイルNoを更新
             file_no += 1
+            # ファイルの状態を確認して、未処理のファイルだけを処理する
+            if filestat.data[FileStat.K_STATUS] == FileStat.S_FINISHED:
+                Log.info(f"スキップ: {filestat.file_name} は既にアップロード済みです。")
+                continue
+
             # MAX_TRY_COUNTまで試行する
             for i in range(1, DriveClient.MAX_TRY_COUNT + 1):
                 # 状態：未→処理中（i回目）
@@ -169,6 +174,8 @@ class ThunderloadService():
                         # リトライ時1秒ずつ遅延させる
                         sleep(i)
 
+        # 進捗ファイル郡を削除する
+        self.file_store.clear_progress_files()
         Log.info("全てのファイルの処理が完了しました。")
 
     def send_filestat(self, file_no, filestat, event):

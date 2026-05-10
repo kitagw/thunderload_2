@@ -3,7 +3,7 @@
 import datetime
 import json
 import threading
-import time
+import traceback
 import os
 from action import Action
 from config import Config
@@ -267,13 +267,21 @@ class ThunderloadWidget(MDWidget):
         # 設定画面にDriveClientを設定
         self.ids.config_screen.client = self.client
 
+        # レシーバー登録
+        self.regist_broadcast_receiver()
+
         # ファイルスクリーン初期化
         self.init_file_screen()
 
-        Log.info(f'PROGRESS_BASE: {ProgressManager.get(ProgressManager.K_PROGRESS_BASE)}')
-        Log.info(f'BACKLOG: {ProgressManager.get(ProgressManager.K_BACKLOG)}')
-        Log.info(f'PROCESSING: {ProgressManager.get(ProgressManager.K_PROCESSING)}')
-        Log.info(f'DONE: {ProgressManager.get(ProgressManager.K_DONE)}')
+        if self.resume_upload:
+            Log.info('前回の続きからアップロードを再開します')
+            # ボタン非活性化
+            # 更新ボタン
+            self.ids.file_screen.ids.refresh_button.disabled = True
+            # バックグラウンド★サービス開始
+            Clock.schedule_once(self.setup_android_and_start_service, 0)
+            # 最後に「起動済みフラグ」を立てる
+            self.service_started = True
 
     # 権限リクエスト（通知、写真と動画の権限）
     def request_permissions(self):
@@ -291,8 +299,25 @@ class ThunderloadWidget(MDWidget):
 
     # ファイルスクリーン初期化
     def init_file_screen(self):
-        # ローカルファイル読込
-        self.file_store = LocalFileStore()
+        # filelist.jsonファイルがローカルにある場合はロード
+        if os.path.exists(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json')):
+            jsondata = open(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json'),'r')
+            filesdict = json.load(jsondata)
+            # ローカルファイル保管庫を初期化
+            files = []
+            files.extend([
+                FileStat(data=f)
+                for f in filesdict
+            ])
+            self.file_store = LocalFileStore(files)
+            # 進捗ファイル郡の状況から進捗を初期化する
+            self.file_store.load_progress_files()
+            self.resume_upload = True
+        else:
+            # ローカルファイル読込
+            self.file_store = LocalFileStore()
+            self.resume_upload = False
+
         # ファイル一覧を一度クリア
         # （クリアしないと、同一データでのリフレッシュ後、進捗更新時に画面が更新されなくなる）
         self.ids.file_screen.ids.rv.file_list = []
@@ -303,7 +328,7 @@ class ThunderloadWidget(MDWidget):
                 for file in self.file_store.files
             )
             self.ids.file_screen.ids.msg.text = 'ファイル数：{}'.format(self.file_store.file_count)
-            self.ids.thunder_button.disabled = False
+            self.ids.thunder_button.disabled = self.resume_upload # 続きからアップロード再開の場合は稲妻ボタンを非活性化、そうでない場合は活性化
             Log.info('ローカルファイル読込完了')
         else:
             self.ids.file_screen.ids.msg.text = 'ファイルなし'
@@ -315,6 +340,28 @@ class ThunderloadWidget(MDWidget):
         app = App.get_running_app()
         app.progress_color = [1, 1, 0, 1]
         app.progress_value = 0
+
+    def regist_broadcast_receiver(self):
+        if platform == 'android':
+            # レシーバーの作成と登録（受け皿を先に作る）
+            # ※MyReceiverクラスの定義などはここにある想定
+            self.br = BroadcastReceiver(
+                self.on_broadcast_received, 
+                actions=[Action.UPDATE, Action.LOG]
+            )
+            Log.info('レシーバー作成完了')
+            if hasattr(self.br, 'receiver'):
+                intent_filter = IntentFilter()
+                intent_filter.addAction(Action.UPDATE)
+                intent_filter.addAction(Action.LOG)
+                # Android 14対応
+                Log.info('レシーバー登録中... (Android 14対応)')
+                currentActivity.registerReceiver(
+                    self.br.receiver, 
+                    intent_filter, 
+                    ContextCompat.RECEIVER_NOT_EXPORTED
+                )
+            Log.info('レシーバー登録完了')
 
     def add_log(self, process_name, level, color, log_text):
         # UI スレッド外から呼ばれた場合は UI スレッドで実行する
@@ -360,55 +407,26 @@ class ThunderloadWidget(MDWidget):
 
     # ★★★androidセットアップ、サービス開始
     def setup_android_and_start_service(self, dt):
-        # 1. 既に起動済みなら、何もしないで帰る
-        if hasattr(self, 'service_started') and self.service_started:
-            Log.info('サービスは既に起動済みです。セットアップをスキップします。')
-            return
-
-        # ファイルリストを初期化してからサービスを開始する（これにより、サービス側でファイルリストを取得できるようになる）
-        self.file_store.init_progress_files()
+        if not self.resume_upload: 
+            # 1. 既に起動済みなら、何もしない
+            if hasattr(self, 'service_started') and self.service_started:
+                Log.info('サービスは既に起動済みです。セットアップをスキップします。')
+                return
+            # ファイルリストを初期化してからサービスを開始する（これにより、サービス側でファイルリストを取得できるようになる）
+            self.file_store.init_progress_files()
 
         """Android環境でレシーバーを登録し、サービスを開始"""
         if platform == 'android':
-            Log.info('Android環境でレシーバーを登録し、サービスを開始')
-            # 2. 権限リクエスト
-            request_permissions([
-                Permission.INTERNET, 
-                Permission.WAKE_LOCK, 
-                Permission.FOREGROUND_SERVICE
-            ])
-            Log.info('権限リクエスト完了')
-
-            # 3. レシーバーの作成と登録（受け皿を先に作る）
-            # ※MyReceiverクラスの定義などはここにある想定
-            self.br = BroadcastReceiver(
-                self.on_broadcast_received, 
-                actions=[Action.UPDATE, Action.LOG]
-            )
-            Log.info('レシーバー作成完了')
-            if hasattr(self.br, 'receiver'):
-                intent_filter = IntentFilter()
-                intent_filter.addAction(Action.UPDATE)
-                intent_filter.addAction(Action.LOG)
-                # Android 14対応
-                Log.info('レシーバー登録中... (Android 14対応)')
-                currentActivity.registerReceiver(
-                    self.br.receiver, 
-                    intent_filter, 
-                    ContextCompat.RECEIVER_NOT_EXPORTED
-                )
-            Log.info('レシーバー登録完了')
-
-            # 4. 全ての準備が整ってからサービスを開始！
+            Log.info('サービスを開始')
+            # 全ての準備が整ってからサービスを開始！
             self.start_service()
             Log.info('サービス開始完了')
-
-            # 5. 最後に「起動済みフラグ」を立てる
+            # 最後に「起動済みフラグ」を立てる
             self.service_started = True
             Log.info('レシーバー登録とサービス開始完了')
 
     # ★★★サービス開始
-    def start_service(self):  
+    def start_service(self):
         if platform == 'android':
 
             # クラス名はマニフェストと完全に一致させる

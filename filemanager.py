@@ -265,9 +265,6 @@ class LocalFileStore:
         # progressフォルダのbacklog、processing、doneの進捗ファイル郡を初期化する
         for folder in [ProgressManager.K_BACKLOG, ProgressManager.K_PROCESSING, ProgressManager.K_DONE]:
             folder_path = ProgressManager.get(folder)
-            # # フォルダがなければ作成する
-            # if not os.path.exists(folder_path):
-            #     os.makedirs(folder_path)
             # フォルダ内のファイルを削除する
             for f in os.listdir(folder_path):
                 file_path = os.path.join(folder_path, f)
@@ -289,6 +286,7 @@ class LocalFileStore:
                 f.data[FileStat.K_STATUS] = FileStat.S_PROCESSING
             elif os.path.exists(os.path.join(ProgressManager.get(ProgressManager.K_DONE), f.file_name)):
                 f.data[FileStat.K_STATUS] = FileStat.S_FINISHED
+                f.data[FileStat.K_RANGE_POS] = f.data[FileStat.K_FILE_SIZE] # アップロード済のバイト位置はファイルサイズと同じにする
             else:
                 f.data[FileStat.K_STATUS] = FileStat.S_UNPROCESSED
     
@@ -299,3 +297,16 @@ class LocalFileStore:
         done_count = len(os.listdir(ProgressManager.get(ProgressManager.K_DONE)))
         Log.info('進捗ファイル郡の状態：backlog={}, processing={}, done={}'.format(backlog_count, processing_count, done_count))
 
+    # 進捗ファイル郡を削除する
+    def clear_progress_files(self):
+        # progressフォルダのfilelist.jsonを削除する
+        filelist_path = os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json')
+        if os.path.exists(filelist_path):
+            os.remove(filelist_path)
+        # progressフォルダのbacklog、processing、doneの進捗ファイル郡を削除する
+        for folder in [ProgressManager.K_BACKLOG, ProgressManager.K_PROCESSING, ProgressManager.K_DONE]:
+            folder_path = ProgressManager.get(folder)
+            for f in os.listdir(folder_path):
+                file_path = os.path.join(folder_path, f)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)

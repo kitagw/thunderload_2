@@ -107,19 +107,8 @@ class ThunderloadService():
         Log.info(f'PROCESSING: {ProgressManager.get(ProgressManager.K_PROCESSING)}')
         Log.info(f'DONE: {ProgressManager.get(ProgressManager.K_DONE)}')
 
-        # filelist.jsonファイルがローカルにある場合はロード
-        jsondata = open(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json'),'r')
-        filesdict = json.load(jsondata)
-
-        # ローカルファイル保管庫を初期化
-        files = []
-        files.extend([
-            FileStat(data=f)
-            for f in filesdict
-        ])
-        self.file_store = LocalFileStore(files)
-        # 進捗ファイル郡の状況から進捗を初期化する
-        self.file_store.load_progress_files()
+        # ローカルファイルストア初期化
+        self.file_store = LocalFileStore()
 
         # DriveClient初期化
         try:

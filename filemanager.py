@@ -188,12 +188,21 @@ class FileStat:
 '''
 class LocalFileStore:
     # コンストラクタ
-    def __init__(self, files=None):
-        if files is None:
-            self.files = []
-        else:
-            self.files = files
+    def __init__(self):
+        # filelist.jsonファイルが存在する場合はそれを読み込む
+        filelist_path = os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json')
+        if os.path.exists(filelist_path):
+            with open(filelist_path, 'r') as f:
+                files_data = json.load(f)
+            self.files = [FileStat(data=f) for f in files_data]
+            # 進捗ファイル郡を読み込む
+            self.load_progress_files()
+            # レジュームアップロードである
+            self.resume_upload = True
             return
+
+        # レジュームアップロードでない
+        self.resume_upload = False
 
         # ローカルファイルの参照パス
         local_path = Config.get(Config.K_LOCAL_PATH) if platform == 'android' else '/home/kitagawa/ピクチャ:/home/kitagawa/pictures'
@@ -236,6 +245,7 @@ class LocalFileStore:
 
         # アップロード対象のファイルリスト
         self.files = unique_files
+
         # ファイル数
         Log.info('アップロード対象ファイル数：{}'.format(self.file_count))
         # ファイルサイズ
@@ -258,10 +268,6 @@ class LocalFileStore:
 
     # 進捗ファイル郡を初期化
     def init_progress_files(self):
-        # アップロード対象のファイルリストを、progressフォルダにfilelist.jsonとして保存する
-        with open(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json'), 'w') as f2:
-            json.dump([f.data for f in self.files], f2, indent=2, ensure_ascii=False)
-
         # progressフォルダのbacklog、processing、doneの進捗ファイル郡を初期化する
         for folder in [ProgressManager.K_BACKLOG, ProgressManager.K_PROCESSING, ProgressManager.K_DONE]:
             folder_path = ProgressManager.get(folder)
@@ -275,6 +281,10 @@ class LocalFileStore:
         for f in self.files:
             with open(os.path.join(ProgressManager.get(ProgressManager.K_BACKLOG), f.file_name), 'w') as f2:
                 pass
+
+        # アップロード対象のファイルリストを、progressフォルダにfilelist.jsonとして保存する
+        with open(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json'), 'w') as f2:
+            json.dump([f.data for f in self.files], f2, indent=2, ensure_ascii=False)
 
     # 進捗ファイル郡を読み込み
     def load_progress_files(self):

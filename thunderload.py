@@ -283,38 +283,15 @@ class ThunderloadWidget(MDWidget):
         # 通知、写真と動画の権限のリクエストコールバックで画面を初期化する（権限がないとファイルが読めないため）
         self.init_file_screen()
 
-        if self.resume_upload:
+        if self.file_store.resume_upload:
             Log.info('前回の続きからアップロードを再開します')
-            # ボタン非活性化
-            # 更新ボタン
-            self.ids.thunder_button.disabled = True
             # バックグラウンド★サービス開始
             Clock.schedule_once(self.setup_android_and_start_service, 0)
-        else:
-            if self.file_store.file_count > 0:
-                # 稲妻ボタン活性化
-                self.ids.thunder_button.disabled = False
             
     # ファイルスクリーン初期化
     def init_file_screen(self):
-        # filelist.jsonファイルがローカルにある場合はロード
-        if os.path.exists(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json')):
-            jsondata = open(os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json'),'r')
-            filesdict = json.load(jsondata)
-            # ローカルファイル保管庫を初期化
-            files = []
-            files.extend([
-                FileStat(data=f)
-                for f in filesdict
-            ])
-            self.file_store = LocalFileStore(files)
-            # 進捗ファイル郡の状況から進捗を初期化する
-            self.file_store.load_progress_files()
-            self.resume_upload = True
-        else:
-            # ローカルファイル読込
-            self.file_store = LocalFileStore()
-            self.resume_upload = False
+        # ローカルファイルストア初期化
+        self.file_store = LocalFileStore()
 
         # ファイル一覧を一度クリア
         # （クリアしないと、同一データでのリフレッシュ後、進捗更新時に画面が更新されなくなる）
@@ -326,12 +303,14 @@ class ThunderloadWidget(MDWidget):
                 for file in self.file_store.files
             )
             self.ids.file_screen.ids.msg.text = 'ファイル数：{}'.format(self.file_store.file_count)
-            # self.ids.thunder_button.disabled = self.resume_upload
             Log.info('ローカルファイル読込完了')
         else:
             self.ids.file_screen.ids.msg.text = 'ファイルなし'
-            # self.ids.thunder_button.disabled = True
             Log.warn('ローカルファイルなし')
+
+        # 稲妻ボタンは、ファイルが存在していてレジュームアップロードでない場合のみ活性化する
+        if self.file_store.file_count > 0 and not self.file_store.resume_upload:
+            self.ids.thunder_button.disabled = False
 
         # インジケーター：黄0 を App プロパティ経由で設定
         from kivy.app import App
@@ -405,23 +384,19 @@ class ThunderloadWidget(MDWidget):
 
     # ★★★androidセットアップ、サービス開始
     def setup_android_and_start_service(self, dt):
-        if not self.resume_upload: 
-            # 1. 既に起動済みなら、何もしない
-            if hasattr(self, 'service_started') and self.service_started:
-                Log.info('サービスは既に起動済みです。セットアップをスキップします。')
-                return
-            # ファイルリストを初期化してからサービスを開始する（これにより、サービス側でファイルリストを取得できるようになる）
-            self.file_store.init_progress_files()
 
-        """Android環境でレシーバーを登録し、サービスを開始"""
         if platform == 'android':
-            Log.info('サービスを開始')
-            # 全ての準備が整ってからサービスを開始！
+            Log.info('サービスを開始します')
+
+            # レジュームアップロードの場合は、前回の続きからアップロードを再開するために、進捗ファイル郡を初期化しない
+            if not self.file_store.resume_upload: 
+                self.file_store.init_progress_files()
+                Log.info('進捗ファイル郡を初期化しました')
+
+            # サービスを開始
             self.start_service()
-            Log.info('サービス開始完了')
-            # 最後に「起動済みフラグ」を立てる
-            self.service_started = True
-            Log.info('レシーバー登録とサービス開始完了')
+
+            Log.info('サービス開始しました')
 
     # ★★★サービス開始
     def start_service(self):
@@ -485,6 +460,12 @@ class ThunderloadWidget(MDWidget):
                             Clock.schedule_once(self.on_file_progress)
                         elif event == FileStat.E_UPLOAD_PROGRESS:
                             Clock.schedule_once(lambda dt: self.on_upload_progress(filestat, filestat.range_pos))
+                        elif event == FileStat.E_COMPLETED:
+                            # 最後のファイルの完了イベントを受け取ったら、完了処理を行う
+                            if file_no == self.file_store.file_count:
+                                Clock.schedule_once(self.on_complete)
+                        elif event == FileStat.E_ERROR:
+                            Clock.schedule_once(self.on_error)
 
                         self._refresh_file_item(filestat)
                     except Exception as e:

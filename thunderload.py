@@ -418,47 +418,38 @@ class ThunderloadWidget(MDWidget):
         # intent からデータを取り出してUIを更新
         match intent.getAction():
             case Action.UPDATE:
-                # intent から filestat と file_no と event を取り出す
-                filestat_json = intent.getStringExtra('filestat')
+                # intent から file_no と filestat と event を取り出す
                 file_no_str = intent.getStringExtra('file_no')
+                filestat_json = intent.getStringExtra('filestat')
                 event_str = intent.getStringExtra('event')
                 # これらが存在する場合のみ処理を行う（サービス側でイベント発生時に送信しているはずだが、念のため）
                 if filestat_json and file_no_str and event_str:
                     try:
-                        filestat_data = json.loads(filestat_json)
-                        filestat = FileStat(data=filestat_data)
                         file_no = int(file_no_str)
+                        filestat = FileStat(data=json.loads(filestat_json))
                         event = event_str
-                        # Log.info(f"Received {event} for [{file_no}] {filestat.file_name}")
 
-                        # 処理中のファイルNoを更新
-                        self.current_file_no = file_no
-                        # 処理中のファイル
-                        self.current_filestat = filestat
-                        # file_store の該当ファイルの状態を更新する（これにより、UIスレッドで正しい FileStat オブジェクトを参照できるようになる）
-                        for f in self.file_store.files:
-                            if f.file_name == filestat.file_name:
-                                f.update_from(filestat)
-                                break
+                        # file_no は 1-origin なので -1 してアクセス
+                        idx = file_no - 1
+                        self.file_store.files[idx].update_from(filestat) 
 
                         # 進捗更新は、処理中のファイルに対してのみ行う（完了や失敗の更新は on_complete や on_error で行う）
                         match event:
                             case FileStat.E_FILE_PROGRESS:
-                                Clock.schedule_once(self.on_file_progress)
+                                Clock.schedule_once(lambda dt: self.on_file_progress(dt, file_no, filestat))
                             case FileStat.E_UPLOAD_PROGRESS:
-                                Clock.schedule_once(self.on_upload_progress)
+                                Clock.schedule_once(lambda dt: self.on_upload_progress(dt, file_no, filestat))
                             case FileStat.E_COMPLETED:
                                 # 最後のファイルの完了イベントを受け取ったら、完了処理を行う
                                 if file_no == self.file_store.file_count:
-                                    Clock.schedule_once(self.on_complete)
+                                    Clock.schedule_once(lambda dt: self.on_complete(dt, file_no, filestat))
                                 # 進捗ファイルの状態をログ出力する
                                 self.file_store.log_progress_files()
                             case FileStat.E_ERROR:
-                                Clock.schedule_once(self.on_error)
+                                Clock.schedule_once(lambda dt: self.on_error(dt, file_no, filestat))
                             case _:
                                 Log.warning(f"Unknown event received: {event}") 
 
-                        self._refresh_file_item(filestat)
                     except Exception as e:
                         Log.error(f"Failed to parse filestat or file_no: {e}")
 
@@ -478,60 +469,48 @@ class ThunderloadWidget(MDWidget):
         super().on_stop()
 
     # 処理中イベント処理
-    def on_file_progress(self, dt):
-        self.ids.file_screen.ids.msg.text = 'アップロード中... ({}/{})'.format(self.current_file_no, self.file_store.file_count)
+    def on_file_progress(self, dt, file_no, filestat):
+        self.ids.file_screen.ids.msg.text = 'アップロード中... ({}/{})'.format(file_no, self.file_store.file_count)
         # ファイルアイテム更新
-        self._refresh_file_item()
+        self._refresh_file_item(file_no, filestat)
 
     # アップロード中イベント処理
-    def on_upload_progress(self, dt):
+    def on_upload_progress(self, dt, file_no, filestat):
         # インジケーター更新
         self._update_progress_indicator()
         # ファイルアイテム更新
-        self._refresh_file_item()
+        self._refresh_file_item(file_no, filestat)
 
     # 完了イベント処理
-    def on_complete(self, dt):
-        self.ids.file_screen.ids.msg.text = 'アップロード完了 ({}/{})'.format(self.current_file_no, self.file_store.file_count)
+    def on_complete(self, dt, file_no, filestat):
+        self.ids.file_screen.ids.msg.text = 'アップロード完了 ({}/{})'.format(file_no, self.file_store.file_count)
         # インジケーター更新：緑100
         self._update_progress_indicator(value=100, color=[0, 1, 0, 1])
         # 更新ボタン活性化
         self.ids.file_screen.ids.refresh_button.disabled = False
         # ファイルアイテム更新
-        self._refresh_file_item()
+        self._refresh_file_item(file_no, filestat)
 
     # エラーイベント処理
-    def on_error(self, dt):
+    def on_error(self, dt, file_no, filestat):
         self.ids.file_screen.ids.msg.text = 'アップロード失敗'
         # インジケーター更新：赤
         self._update_progress_indicator(color=[1, 0, 0, 1])
         # 更新ボタン活性化
         self.ids.file_screen.ids.refresh_button.disabled = False
         # ファイルアイテム更新
-        self._refresh_file_item()
+        self._refresh_file_item(file_no, filestat)
 
     # ファイルアイテム更新
-    def _refresh_file_item(self, filestat=None):
+    def _refresh_file_item(self, file_no, filestat):
         # UI スレッド外から呼ばれた場合は UI スレッドで実行する
         if threading.current_thread() is not threading.main_thread():
-            Clock.schedule_once(lambda dt: self._refresh_file_item(filestat), 0)
+            Clock.schedule_once(lambda dt: self._refresh_file_item(file_no, filestat), 0)
             return
 
-        # filestat が指定されればそのファイルのリストアイテムを更新する
-        if filestat is None:
-            idx = self.current_file_no - 1
-            item = self.current_filestat
-        else:
-            try:
-                # ファイル名でインデックスを検索する（filestat オブジェクトはサービス側で新規生成されるため、同一のオブジェクトが存在しない）
-                idx = next(i for i, f in enumerate(self.file_store.files) if f.file_name == filestat.file_name)
-            except ValueError:
-                # filestat が見つからない場合は何もしない
-                return
-            item = filestat
-
+        idx = file_no - 1
         self.ids.file_screen.ids.rv.file_list[idx] = {}
-        self.ids.file_screen.ids.rv.file_list[idx] = item.data
+        self.ids.file_screen.ids.rv.file_list[idx] = filestat.data
 
     # インジケーター更新（UIスレッド上で実行する）
     def _update_progress_indicator(self, value=None, color=None):
@@ -541,13 +520,11 @@ class ThunderloadWidget(MDWidget):
             return 
 
         app = App.get_running_app()
-
         # 値は 0-100 を使用しているのでそのまま割り当て（全体進捗を算出）
         if value is not None:
             app.progress_value = value
         else:
             app.progress_value = self.file_store.range_pos / self.file_store.file_size * 100
-
         # 色
         if color is not None:
             app.progress_color = color

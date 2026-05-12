@@ -96,7 +96,7 @@ class ThunderloadService():
     def run_upload(self):
         # アップロード進捗通知のコールバック
         def on_upload_progress(file_no, filestat, range_pos):
-            Log.info('{}：{}MB アップ済'.format(filestat.file_name, '{:,.1f}'.format(FileStat.to_view_size(range_pos))))
+            Log.info('[{}] {}：{}MB アップ済'.format(file_no, filestat.file_name, '{:,.1f}'.format(FileStat.to_view_size(range_pos))))
             filestat.uploading(range_pos)
             self.send_filestat(file_no, filestat, FileStat.E_UPLOAD_PROGRESS)
 
@@ -121,7 +121,7 @@ class ThunderloadService():
             file_no += 1
             # ファイルの状態を確認して、未処理のファイルだけを処理する
             if filestat.status == FileStat.S_FINISHED:
-                Log.info('{}：既済'.format(filestat.file_name))
+                Log.info('[{}] {}：既済'.format(file_no, filestat.file_name))
                 continue
 
             # MAX_TRY_COUNTまで試行する
@@ -129,24 +129,23 @@ class ThunderloadService():
                 # 状態：未→処理中（i回目）
                 filestat.to_stat_progress(i)
                 self.send_filestat(file_no, filestat, FileStat.E_FILE_PROGRESS)
-                Log.info('{}：開始({})'.format(filestat.file_name, i))
                 # 通知の内容を更新する
                 self.update_notification(file_no, filestat)
 
                 try:
                     # アップロード実行
-                    Log.info('{}：処理中({})...'.format(filestat.file_name, i))
+                    Log.info('[{}] {}：処理中({})...'.format(file_no, filestat.file_name, i))
                     # upload に渡すコールバックは filestat をキャプチャしたクロージャにする
                     # これにより、UI スレッドで実行されるときに filestat が変わっていても
                     # 正しい FileStat に対して進捗更新できる
                     self.client.upload(filestat, lambda pos, fs=filestat: on_upload_progress(file_no, fs, pos))
-                    Log.info('{}：完了({})'.format(filestat.file_name, i))
+                    Log.info('[{}] {}：完了({})'.format(file_no, filestat.file_name, i))
                     # 状態：処理中→完了
                     filestat.to_stat_successful()
                     self.send_filestat(file_no, filestat, FileStat.E_COMPLETED)
                     break
                 except Exception as ex:
-                    Log.error('{}：失敗({})\n{}'.format(filestat.file_name, i, repr(ex)))
+                    Log.error('[{}] {}：失敗({})\n{}'.format(file_no, filestat.file_name, i, repr(ex)))
                     # 最大試行回数
                     if i == DriveClient.MAX_TRY_COUNT:
                         # 状態：処理中→失敗
@@ -169,8 +168,8 @@ class ThunderloadService():
             # 自分のアプリ内だけに送信することを明示（これが重要！）
             intent.setPackage(self.service.getPackageName())
             # FileStatオブジェクトをJSONに変換して送る
-            intent.putExtra('filestat', String(json.dumps(filestat.data)))
             intent.putExtra('file_no', String(str(file_no)))
+            intent.putExtra('filestat', String(json.dumps(filestat.data)))
             intent.putExtra('event', String(str(event)))
             # ブロードキャストを送信
             self.service.sendBroadcast(intent)
@@ -195,8 +194,6 @@ class ThunderloadService():
     def update_notification(self, file_no, filestat):
         """通知の中身を更新する"""
         try:
-            # Log.info(f"update_notification called with file_no={file_no}, filestat={filestat.file_name}")
-
             app_context = self.service.getApplicationContext()
             
             # 1. 再度インテントを作成（タップ時にアプリを開くため）
@@ -222,8 +219,6 @@ class ThunderloadService():
             # 3. NotificationManagerを取得して更新を通知
             notification_manager = self.service.getSystemService(Context.NOTIFICATION_SERVICE)
             notification_manager.notify(NOTIFICATION_ID, notification)
-
-            # Log.info(f"update_notification successfully updated with file_no={file_no}, filestat={filestat.file_name}")
 
         except Exception as e:
             Log.error(f"Notification update failed: {e}")

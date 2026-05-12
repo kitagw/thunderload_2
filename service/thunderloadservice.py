@@ -83,7 +83,7 @@ class ThunderloadService():
         if self.wakelock and self.wakelock.isHeld():
             self.wakelock.release()
             self.wakelock = None
-            Log.info("DEBUG: CPUを解放しました。おやすみなさい。")
+            Log.info("DEBUG: CPUを解放しました")
 
     def stop_service(self):
         # WakeLockを解除
@@ -96,16 +96,10 @@ class ThunderloadService():
     def run_upload(self):
         # アップロード進捗通知のコールバック
         def on_upload_progress(file_no, filestat, range_pos):
-            Log.info(f"アップロード中: {filestat.file_name}, アップロード済みバイト数={range_pos}")
             filestat.uploading(range_pos)
             self.send_filestat(file_no, filestat, FileStat.E_UPLOAD_PROGRESS)
 
-        Log.info("ファイルのアップロードを開始します。")
-
-        Log.info(f'PROGRESS_BASE: {ProgressManager.get(ProgressManager.K_PROGRESS_BASE)}')
-        Log.info(f'BACKLOG: {ProgressManager.get(ProgressManager.K_BACKLOG)}')
-        Log.info(f'PROCESSING: {ProgressManager.get(ProgressManager.K_PROCESSING)}')
-        Log.info(f'DONE: {ProgressManager.get(ProgressManager.K_DONE)}')
+        Log.info("ファイルのアップロードを開始します")
 
         # ローカルファイルストア初期化
         self.file_store = LocalFileStore()
@@ -125,8 +119,8 @@ class ThunderloadService():
             # 処理中のファイルNoを更新
             file_no += 1
             # ファイルの状態を確認して、未処理のファイルだけを処理する
-            if filestat.data[FileStat.K_STATUS] == FileStat.S_FINISHED:
-                Log.info(f"スキップ: {filestat.file_name} は既にアップロード済みです。")
+            if filestat.status == FileStat.S_FINISHED:
+                Log.info('{}：既済'.format(filestat.file_name))
                 continue
 
             # MAX_TRY_COUNTまで試行する
@@ -134,7 +128,7 @@ class ThunderloadService():
                 # 状態：未→処理中（i回目）
                 filestat.to_stat_progress(i)
                 self.send_filestat(file_no, filestat, FileStat.E_FILE_PROGRESS)
-                Log.info(f"開始: {filestat.file_name}")
+                Log.info('{}：開始({})'.format(filestat.file_name, i))
                 # 通知の内容を更新する
                 self.update_notification(file_no, filestat)
 
@@ -165,7 +159,7 @@ class ThunderloadService():
 
         # 進捗ファイル郡を削除する
         self.file_store.clear_progress_files()
-        Log.info("全てのファイルの処理が完了しました。")
+        Log.info("全てのファイルの処理が完了しました")
 
     def send_filestat(self, file_no, filestat, event):
         """メインアプリへFileStatをブロードキャストする"""

@@ -319,7 +319,7 @@ class LocalFileStore:
         backlog_count = len(os.listdir(ProgressManager.get(ProgressManager.K_BACKLOG)))
         processing_count = len(os.listdir(ProgressManager.get(ProgressManager.K_PROCESSING)))
         done_count = len(os.listdir(ProgressManager.get(ProgressManager.K_DONE)))
-        Log.info('進捗ファイルの状態：{}/{}/{}'.format(backlog_count, processing_count, done_count))
+        Log.info('進捗ファイル：{}/{}/{}'.format(backlog_count, processing_count, done_count))
 
     # 進捗ファイルを削除する
     def clear_progress_files(self):

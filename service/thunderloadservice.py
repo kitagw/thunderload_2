@@ -96,6 +96,7 @@ class ThunderloadService():
     def run_upload(self):
         # アップロード進捗通知のコールバック
         def on_upload_progress(file_no, filestat, range_pos):
+            Log.info('{}：{}MB アップ済'.format(filestat.file_name, '{:,.1f}'.format(FileStat.to_view_size(range_pos))))
             filestat.uploading(range_pos)
             self.send_filestat(file_no, filestat, FileStat.E_UPLOAD_PROGRESS)
 

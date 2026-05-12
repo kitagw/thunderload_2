@@ -10,6 +10,7 @@ from config import Config
 from log import Log
 from driveclient import DriveClient
 from filemanager import FileStat, LocalFileStore
+from kivy.app import App
 from kivy.clock import Clock
 from kivy.properties import ListProperty, NumericProperty, ObjectProperty, StringProperty
 from kivy.uix.widget import Widget
@@ -312,11 +313,8 @@ class ThunderloadWidget(MDWidget):
         if self.file_store.file_count > 0 and not self.file_store.resume_upload:
             self.ids.thunder_button.disabled = False
 
-        # インジケーター：黄0 を App プロパティ経由で設定
-        from kivy.app import App
-        app = App.get_running_app()
-        app.progress_color = [1, 1, 0, 1]
-        app.progress_value = 0
+        # インジケーター更新：黄
+        self._update_progress_indicator(color=[1, 1, 0, 1])
 
     def regist_broadcast_receiver(self):
         if platform == 'android':
@@ -378,18 +376,17 @@ class ThunderloadWidget(MDWidget):
         self.ids.thunder_button.disabled = True
         # 更新ボタン
         self.ids.file_screen.ids.refresh_button.disabled = True
-
         # サービス開始
         Clock.schedule_once(self.start_service, 0)
 
     # サービス開始
     def start_service(self, dt):
-        if platform == 'android':
-            # 新規アップロードの場合は、進捗ファイルを初期化する（レジュームアップロードの場合は既存の進捗ファイルを使用する）
-            if not self.file_store.resume_upload: 
-                self.file_store.init_progress_files()
-                Log.info('進捗ファイルを初期化しました')
+        # 新規アップロードの場合は、進捗ファイルを初期化する（レジュームアップロードの場合は既存の進捗ファイルを使用する）
+        if not self.file_store.resume_upload: 
+            self.file_store.init_progress_files()
+            Log.info('進捗ファイルを初期化しました')
 
+        if platform == 'android':
             # クラス名はマニフェストと完全に一致させる
             service_class_name = 'org.kitagw.thunderload_2.ServiceThunderloadservice'
             service_class = autoclass(service_class_name)
@@ -421,18 +418,18 @@ class ThunderloadWidget(MDWidget):
         # intent からデータを取り出してUIを更新
         match intent.getAction():
             case Action.UPDATE:
-                # 進捗ファイル郡の状態をログ出力する
-                self.file_store.log_progress_files()
+                # intent から filestat と file_no と event を取り出す
                 filestat_json = intent.getStringExtra('filestat')
                 file_no_str = intent.getStringExtra('file_no')
                 event_str = intent.getStringExtra('event')
+                # これらが存在する場合のみ処理を行う（サービス側でイベント発生時に送信しているはずだが、念のため）
                 if filestat_json and file_no_str and event_str:
                     try:
                         filestat_data = json.loads(filestat_json)
                         filestat = FileStat(data=filestat_data)
                         file_no = int(file_no_str)
                         event = event_str
-                        Log.info(f"Received {event} for [{file_no}] {filestat.file_name}")
+                        # Log.info(f"Received {event} for [{file_no}] {filestat.file_name}")
 
                         # 処理中のファイルNoを更新
                         self.current_file_no = file_no
@@ -449,11 +446,13 @@ class ThunderloadWidget(MDWidget):
                             case FileStat.E_FILE_PROGRESS:
                                 Clock.schedule_once(self.on_file_progress)
                             case FileStat.E_UPLOAD_PROGRESS:
-                                Clock.schedule_once(lambda dt: self.on_upload_progress(filestat, filestat.range_pos))
+                                Clock.schedule_once(self.on_upload_progress)
                             case FileStat.E_COMPLETED:
                                 # 最後のファイルの完了イベントを受け取ったら、完了処理を行う
                                 if file_no == self.file_store.file_count:
                                     Clock.schedule_once(self.on_complete)
+                                # 進捗ファイルの状態をログ出力する
+                                self.file_store.log_progress_files()
                             case FileStat.E_ERROR:
                                 Clock.schedule_once(self.on_error)
                             case _:
@@ -462,6 +461,7 @@ class ThunderloadWidget(MDWidget):
                         self._refresh_file_item(filestat)
                     except Exception as e:
                         Log.error(f"Failed to parse filestat or file_no: {e}")
+
             case Action.LOG:
                 process_name_str = intent.getStringExtra('process_name')
                 level_str = intent.getStringExtra('level')
@@ -480,20 +480,15 @@ class ThunderloadWidget(MDWidget):
     # 処理中イベント処理
     def on_file_progress(self, dt):
         self.ids.file_screen.ids.msg.text = 'アップロード中... ({}/{})'.format(self.current_file_no, self.file_store.file_count)
-        # インジケーター更新：黄
-        self._update_progress_indicator(color=[1, 1, 0, 1])
         # ファイルアイテム更新
         self._refresh_file_item()
 
     # アップロード中イベント処理
-    def on_upload_progress(self, filestat, range_pos):
-        # filestat 固有で進捗を処理する（background_process の self.current_file に依存しない）
-        Log.info('{}：{}MB アップ済'.format(filestat.file_name, '{:,.1f}'.format(FileStat.to_view_size(range_pos))))
-        filestat.uploading(range_pos)
+    def on_upload_progress(self, dt):
         # インジケーター更新
         self._update_progress_indicator()
-        # ファイルアイテム更新（該当ファイルのみ）
-        self._refresh_file_item(filestat)
+        # ファイルアイテム更新
+        self._refresh_file_item()
 
     # 完了イベント処理
     def on_complete(self, dt):
@@ -545,7 +540,6 @@ class ThunderloadWidget(MDWidget):
             Clock.schedule_once(lambda dt: self._update_progress_indicator(value, color), 0)
             return 
 
-        from kivy.app import App
         app = App.get_running_app()
 
         # 値は 0-100 を使用しているのでそのまま割り当て（全体進捗を算出）
@@ -557,11 +551,6 @@ class ThunderloadWidget(MDWidget):
         # 色
         if color is not None:
             app.progress_color = color
-
-    # アップロード進捗通知のコールバック
-    def _upload_progress_from_thread(self, filestat, range_pos):
-        # UIスレッド上から実行する（filestat を渡す）
-        Clock.schedule_once(lambda dt: self.on_upload_progress(filestat, range_pos), 0)
 
 class ThunderloadApp(MDApp):
     # アプリ全体で共有する進捗プロパティ

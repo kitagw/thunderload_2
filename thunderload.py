@@ -252,7 +252,7 @@ class ThunderloadWidget(MDWidget):
     def on_kv_post(self, *args, **kwargs):
         super().on_kv_post(*args, **kwargs)
         # ログハンドラ設定
-        Log.handler(self.add_log, 'M')
+        Log.handler(self.add_log, '■')
         # DriveClient初期化
         try:
             Log.info('DriveClient初期化中...')
@@ -338,10 +338,10 @@ class ThunderloadWidget(MDWidget):
                 )
             Log.info('レシーバー登録完了')
 
-    def add_log(self, process_name, level, color, log_text):
+    def add_log(self, process_symbol, level, color, log_text):
         # UI スレッド外から呼ばれた場合は UI スレッドで実行する
         if threading.current_thread() is not threading.main_thread():
-            Clock.schedule_once(lambda dt: self.add_log(process_name, level, color, log_text), 0)
+            Clock.schedule_once(lambda dt: self.add_log(process_symbol, level, color, log_text), 0)
             return
 
         date_str = datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
@@ -349,7 +349,7 @@ class ThunderloadWidget(MDWidget):
         self.ids.log_screen.ids.rv.data.append({
             'markup': True,
             'text': '{} &bl;{}&br; &bl;[color={}]{}[/color]&br;\n{}'.format(
-                date_str, process_name, color, level, escape_markup(log_text),
+                date_str, process_symbol, color, level, escape_markup(log_text),
             ),
         })
 
@@ -454,11 +454,11 @@ class ThunderloadWidget(MDWidget):
                         Log.error(f"Failed to parse filestat or file_no: {e}")
 
             case Action.LOG:
-                process_name_str = intent.getStringExtra('process_name')
+                process_symbol_str = intent.getStringExtra('process_symbol')
                 level_str = intent.getStringExtra('level')
                 color_str = intent.getStringExtra('color')
                 log_text_str = intent.getStringExtra('log_text')
-                self.add_log(process_name_str, level_str, color_str, log_text_str)
+                self.add_log(process_symbol_str, level_str, color_str, log_text_str)
             case _:
                 Log.warning(f"Unknown action received: {intent.getAction()}")
 

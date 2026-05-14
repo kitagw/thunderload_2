@@ -9,7 +9,7 @@ try:
     # サービスのインスタンスを作成
     tService = ThunderloadService()
     # ロガーのハンドラーをサービスのsend_logメソッドに設定
-    Log.handler(tService.send_log, 'S')
+    Log.handler(tService.send_log, '□')
     # サービスのアップロード処理を開始
     tService.run_upload()
 except Exception as e:

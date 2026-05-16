@@ -281,6 +281,11 @@ class ThunderloadWidget(MDWidget):
 
     # 権限リクエストの結果コールバック
     def on_permissions_result(self, permissions, grant_results):
+        # UI スレッド外から呼ばれた場合は UI スレッドで実行する
+        if threading.current_thread() is not threading.main_thread():
+            Clock.schedule_once(lambda dt: self.on_permissions_result(permissions, grant_results), 0)
+            return
+
         # 通知、写真と動画の権限のリクエストコールバックで画面を初期化する（権限がないとファイルが読めないため）
         self.init_file_screen()
 
@@ -418,6 +423,11 @@ class ThunderloadWidget(MDWidget):
 
     def on_broadcast_received(self, context, intent):
         """ブロードキャストを受信した時のコールバック"""
+        # UI スレッド外から呼ばれた場合は UI スレッドで実行する
+        if threading.current_thread() is not threading.main_thread():
+            Clock.schedule_once(lambda dt: self.on_broadcast_received(context, intent), 0)
+            return
+
         # intent からデータを取り出してUIを更新
         match intent.getAction():
             case Action.UPDATE:
@@ -441,15 +451,15 @@ class ThunderloadWidget(MDWidget):
                         # 進捗更新は、処理中のファイルに対してのみ行う（完了や失敗の更新は on_complete や on_error で行う）
                         match event:
                             case FileStat.E_FILE_PROGRESS:
-                                Clock.schedule_once(lambda dt: self.on_file_progress(dt, file_no, filestat))
+                                self.on_file_progress(file_no, filestat)
                             case FileStat.E_UPLOAD_PROGRESS:
-                                Clock.schedule_once(lambda dt: self.on_upload_progress(dt, file_no, filestat))
+                                self.on_upload_progress(file_no, filestat)
                             case FileStat.E_COMPLETED:
                                 # 最後のファイルの完了イベントを受け取ったら、完了処理を行う
                                 if file_no == self.file_store.file_count:
-                                    Clock.schedule_once(lambda dt: self.on_complete(dt, file_no, filestat))
+                                    self.on_complete(file_no, filestat)
                             case FileStat.E_ERROR:
-                                Clock.schedule_once(lambda dt: self.on_error(dt, file_no, filestat))
+                                self.on_error(file_no, filestat)
                             case _:
                                 Log.warning(f"Unknown event received: {event}") 
 
@@ -472,16 +482,16 @@ class ThunderloadWidget(MDWidget):
         super().on_stop()
 
     # 処理中イベント処理
-    def on_file_progress(self, dt, file_no, filestat):
+    def on_file_progress(self, file_no, filestat):
         self.ids.file_screen.ids.msg.text = 'アップロード中... ({}/{})'.format(file_no, self.file_store.file_count)
 
     # アップロード中イベント処理
-    def on_upload_progress(self, dt, file_no, filestat):
+    def on_upload_progress(self, file_no, filestat):
         # インジケーター更新
         self._update_progress_indicator()
 
     # 完了イベント処理
-    def on_complete(self, dt, file_no, filestat):
+    def on_complete(self, file_no, filestat):
         self.ids.file_screen.ids.msg.text = 'アップロード完了 ({}/{})'.format(file_no, self.file_store.file_count)
         # インジケーター更新：緑100
         self._update_progress_indicator(value=100, color=[0, 1, 0, 1])
@@ -489,7 +499,7 @@ class ThunderloadWidget(MDWidget):
         self.ids.file_screen.ids.refresh_button.disabled = False
 
     # エラーイベント処理
-    def on_error(self, dt, file_no, filestat):
+    def on_error(self, file_no, filestat):
         self.ids.file_screen.ids.msg.text = 'アップロード失敗'
         # インジケーター更新：赤
         self._update_progress_indicator(color=[1, 0, 0, 1])
@@ -498,22 +508,12 @@ class ThunderloadWidget(MDWidget):
 
     # ファイルアイテム更新
     def _refresh_file_item(self, file_no, filestat):
-        # UI スレッド外から呼ばれた場合は UI スレッドで実行する
-        if threading.current_thread() is not threading.main_thread():
-            Clock.schedule_once(lambda dt: self._refresh_file_item(file_no, filestat), 0)
-            return
-
         idx = file_no - 1
         self.ids.file_screen.ids.rv.file_list[idx] = {}
         self.ids.file_screen.ids.rv.file_list[idx] = filestat.data
 
     # インジケーター更新（UIスレッド上で実行する）
     def _update_progress_indicator(self, value=None, color=None):
-        # UI スレッド外から呼ばれた場合は UI スレッドで実行する
-        if threading.current_thread() is not threading.main_thread():
-            Clock.schedule_once(lambda dt: self._update_progress_indicator(value, color), 0)
-            return 
-
         app = App.get_running_app()
         # 値は 0-100 を使用しているのでそのまま割り当て（全体進捗を算出）
         if value is not None:

@@ -252,10 +252,10 @@ class ThunderloadWidget(MDWidget):
     def on_kv_post(self, *args, **kwargs):
         super().on_kv_post(*args, **kwargs)
         # ログハンドラ設定
-        Log.handler(self.add_log, '■')
+        Log.handler(self.add_log, '●')
         # DriveClient初期化
         try:
-            Log.info('DriveClient初期化中...')
+            # Log.info('DriveClient初期化中...')
             self.client = DriveClient()
             # 設定画面にDriveClientを設定
             self.ids.config_screen.client = self.client
@@ -314,8 +314,10 @@ class ThunderloadWidget(MDWidget):
             self.ids.thunder_button.disabled = False
 
         # インジケーター更新：黄
+        # 進捗値は self.file_storeで管理している処理済サイズから算出される（レジューム時には続きからの値となる）
         self._update_progress_indicator(color=[1, 1, 0, 1])
 
+    # レシーバー登録
     def regist_broadcast_receiver(self):
         if platform == 'android':
             # レシーバーの作成と登録（受け皿を先に作る）
@@ -324,13 +326,13 @@ class ThunderloadWidget(MDWidget):
                 self.on_broadcast_received, 
                 actions=[Action.UPDATE, Action.LOG]
             )
-            Log.info('レシーバー作成完了')
+            # Log.info('レシーバー作成完了')
             if hasattr(self.br, 'receiver'):
                 intent_filter = IntentFilter()
                 intent_filter.addAction(Action.UPDATE)
                 intent_filter.addAction(Action.LOG)
                 # Android 14対応
-                Log.info('レシーバー登録中... (Android 14対応)')
+                # Log.info('レシーバー登録中...')
                 currentActivity.registerReceiver(
                     self.br.receiver, 
                     intent_filter, 
@@ -338,6 +340,7 @@ class ThunderloadWidget(MDWidget):
                 )
             Log.info('レシーバー登録完了')
 
+    # ログ追加（UIスレッド外から呼ばれる可能性があるため、UIスレッドで実行する）
     def add_log(self, process_symbol, level, color, log_text):
         # UI スレッド外から呼ばれた場合は UI スレッドで実行する
         if threading.current_thread() is not threading.main_thread():
@@ -432,6 +435,8 @@ class ThunderloadWidget(MDWidget):
                         # file_no は 1-origin なので -1 してアクセス
                         idx = file_no - 1
                         self.file_store.files[idx].update_from(filestat) 
+                        # ファイルアイテム更新
+                        self._refresh_file_item(file_no, filestat)
 
                         # 進捗更新は、処理中のファイルに対してのみ行う（完了や失敗の更新は on_complete や on_error で行う）
                         match event:
@@ -443,15 +448,13 @@ class ThunderloadWidget(MDWidget):
                                 # 最後のファイルの完了イベントを受け取ったら、完了処理を行う
                                 if file_no == self.file_store.file_count:
                                     Clock.schedule_once(lambda dt: self.on_complete(dt, file_no, filestat))
-                                # 進捗ファイルの状態をログ出力する
-                                self.file_store.log_progress_files()
                             case FileStat.E_ERROR:
                                 Clock.schedule_once(lambda dt: self.on_error(dt, file_no, filestat))
                             case _:
                                 Log.warning(f"Unknown event received: {event}") 
 
                     except Exception as e:
-                        Log.error(f"Failed to parse filestat or file_no: {e}")
+                        Log.error(traceback.format_exc())
 
             case Action.LOG:
                 process_symbol_str = intent.getStringExtra('process_symbol')
@@ -471,15 +474,11 @@ class ThunderloadWidget(MDWidget):
     # 処理中イベント処理
     def on_file_progress(self, dt, file_no, filestat):
         self.ids.file_screen.ids.msg.text = 'アップロード中... ({}/{})'.format(file_no, self.file_store.file_count)
-        # ファイルアイテム更新
-        self._refresh_file_item(file_no, filestat)
 
     # アップロード中イベント処理
     def on_upload_progress(self, dt, file_no, filestat):
         # インジケーター更新
         self._update_progress_indicator()
-        # ファイルアイテム更新
-        self._refresh_file_item(file_no, filestat)
 
     # 完了イベント処理
     def on_complete(self, dt, file_no, filestat):
@@ -488,8 +487,6 @@ class ThunderloadWidget(MDWidget):
         self._update_progress_indicator(value=100, color=[0, 1, 0, 1])
         # 更新ボタン活性化
         self.ids.file_screen.ids.refresh_button.disabled = False
-        # ファイルアイテム更新
-        self._refresh_file_item(file_no, filestat)
 
     # エラーイベント処理
     def on_error(self, dt, file_no, filestat):
@@ -498,8 +495,6 @@ class ThunderloadWidget(MDWidget):
         self._update_progress_indicator(color=[1, 0, 0, 1])
         # 更新ボタン活性化
         self.ids.file_screen.ids.refresh_button.disabled = False
-        # ファイルアイテム更新
-        self._refresh_file_item(file_no, filestat)
 
     # ファイルアイテム更新
     def _refresh_file_item(self, file_no, filestat):

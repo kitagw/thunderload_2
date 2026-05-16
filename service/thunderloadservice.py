@@ -1,11 +1,9 @@
 import json
-import os
 from action import Action
 from driveclient import DriveClient
 from filemanager import FileStat, LocalFileStore
 from jnius import autoclass # type: ignore
 from log import Log
-from progressmanager import ProgressManager
 from time import sleep
 
 # Javaクラスのインポート
@@ -157,7 +155,10 @@ class ThunderloadService():
                         # リトライ時1秒ずつ遅延させる
                         sleep(i)
 
-        # 進捗ファイル郡を削除する
+            # 進捗ファイルの状態をログ出力する
+            self.file_store.log_progress_files()
+
+        # 進捗ファイルを削除する
         self.file_store.clear_progress_files()
         Log.info("全てのファイルの処理が完了しました")
 

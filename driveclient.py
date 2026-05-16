@@ -50,10 +50,10 @@ class DriveClient():
         self.created_folders = []
 
         # クライアント初期化
-        Log.info('設定ファイルパス: ' + Config.CONFIG_JSON_PATH)
+        # Log.info('設定ファイルパス: ' + Config.CONFIG_JSON_PATH)
         if self.client_id and self.authority and self.upload_path: 
             self.__init_client()
-            Log.info('設定項目のClient_ID、authority、アップロードパスを読み込みました')
+            # Log.info('設定項目のClient_ID、authority、アップロードパスを読み込みました')
         else:
             Log.error('設定項目のClient_ID、authority、アップロードパスが登録されていません')
 
@@ -86,7 +86,7 @@ class DriveClient():
         トークンをローカルファイルからロードする。
         ローカルにファイルがない場合は、ブラウザ認証でトークンを取得する。
         '''
-        Log.info('トークンファイル：{}'.format(DriveClient.TOKENS_JSON_PATH))
+        # Log.info('トークンファイル：{}'.format(DriveClient.TOKENS_JSON_PATH))
         if os.path.isfile(DriveClient.TOKENS_JSON_PATH):
             # トークンファイルがローカルにある場合はロード
             jsondata = open(DriveClient.TOKENS_JSON_PATH,'r')    

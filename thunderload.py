@@ -438,13 +438,11 @@ class ThunderloadWidget(MDWidget):
                 # これらが存在する場合のみ処理を行う（サービス側でイベント発生時に送信しているはずだが、念のため）
                 if filestat_json and file_no_str and event_str:
                     try:
+                        # 文字列から必要なデータを取得
                         file_no = int(file_no_str)
                         filestat = FileStat(data=json.loads(filestat_json))
                         event = event_str
-
-                        # file_no は 1-origin なので -1 してアクセス
-                        idx = file_no - 1
-                        self.file_store.files[idx].update_from(filestat) 
+                        
                         # ファイルアイテム更新
                         self._refresh_file_item(file_no, filestat)
 
@@ -467,11 +465,14 @@ class ThunderloadWidget(MDWidget):
                         Log.error(traceback.format_exc())
 
             case Action.LOG:
+                # 文字列から必要なデータを取得
                 process_symbol_str = intent.getStringExtra('process_symbol')
                 level_str = intent.getStringExtra('level')
                 color_str = intent.getStringExtra('color')
                 log_text_str = intent.getStringExtra('log_text')
-                self.add_log(process_symbol_str, level_str, color_str, log_text_str)
+                # これらが存在する場合のみ処理を行う（サービス側でログ発生時に送信しているはずだが、念のため）
+                if process_symbol_str and level_str and color_str and log_text_str:
+                    self.add_log(process_symbol_str, level_str, color_str, log_text_str)
             case _:
                 Log.warning(f"Unknown action received: {intent.getAction()}")
 
@@ -508,7 +509,12 @@ class ThunderloadWidget(MDWidget):
 
     # ファイルアイテム更新
     def _refresh_file_item(self, file_no, filestat):
+        # file_no は 1-origin なので -1 してアクセス
         idx = file_no - 1
+        # filestat でファイルストアの該当ファイルを更新
+        self.file_store.files[idx].update_from(filestat) 
+        # RecycleViewのデータを更新するために、いったん空の辞書を割り当ててから新しいデータを割り当てる
+        # （これをやらないと、同一データでのリフレッシュ後、進捗更新時に画面が更新されなくなる）
         self.ids.file_screen.ids.rv.file_list[idx] = {}
         self.ids.file_screen.ids.rv.file_list[idx] = filestat.data
 

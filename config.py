@@ -8,7 +8,7 @@ from log import Log
 '''
 class Config():
     # 設定保管先のファイルパス
-    CONFIG_JSON_PATH = None
+    JSON_PATH = None
     # ローカルパス
     K_LOCAL_PATH = 'local_path'
     # アップロードパス
@@ -32,11 +32,11 @@ class Config():
         else:
             BASE = '/home/kitagawa/onedrive/vscode/python/thunderload_2/resources'
 
-        Config.CONFIG_JSON_PATH = os.path.join(BASE, 'config.json')
+        Config.JSON_PATH = os.path.join(BASE, 'config.json')
 
-        if os.path.isfile(Config.CONFIG_JSON_PATH):
+        if os.path.isfile(Config.JSON_PATH):
             # configファイルがローカルにある場合はロード
-            jsondata = open(Config.CONFIG_JSON_PATH,'r')
+            jsondata = open(Config.JSON_PATH,'r')
             Config.items = json.load(jsondata)
         else:
             Config.items = json.loads('{}')
@@ -49,7 +49,7 @@ class Config():
     def set(key, value):
         Config.items[key]=value
         # ファイルに保存
-        with open(Config.CONFIG_JSON_PATH, 'w') as f2:
+        with open(Config.JSON_PATH, 'w') as f2:
             json.dump(Config.items, f2, indent=2)
 
     # ロック中か検査

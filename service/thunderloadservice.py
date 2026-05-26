@@ -1,5 +1,6 @@
 import json
 from action import Action
+from appstatus import AppStatus
 from driveclient import DriveClient
 from filemanager import FileStat, LocalFileStore
 from jnius import autoclass # type: ignore
@@ -98,7 +99,17 @@ class ThunderloadService():
             filestat.uploading(range_pos)
             self.send_filestat(file_no, filestat, FileStat.E_UPLOAD_PROGRESS)
 
-        Log.info("ファイルのアップロードを開始します")
+        # アップロード開始前に、実行中かどうかを確認する
+        if not AppStatus.is_status(AppStatus.S_RUNNING):
+            Log.info("アップロードは開始しませんでした（AppStatusが実行中ではないため）")
+            # 停止中の場合は、停止済に変更する
+            if AppStatus.is_status(AppStatus.S_STOPPING):
+                Log.info("AppStatusは停止中でした。AppStatusを停止済に変更します。")
+                AppStatus.set_status(AppStatus.S_STOPPED)
+
+            return
+
+        Log.info("アップロードを開始します")
 
         # ローカルファイルストア初期化
         self.file_store = LocalFileStore()
@@ -124,6 +135,13 @@ class ThunderloadService():
 
             # MAX_TRY_COUNTまで試行する
             for i in range(1, DriveClient.MAX_TRY_COUNT + 1):
+                # 停止中の場合は、停止する
+                if AppStatus.is_status(AppStatus.S_STOPPING):
+                    AppStatus.set_status(AppStatus.S_STOPPED)
+
+                    Log.info("アップロードを停止しました")
+                    return
+
                 # 状態：未→処理中（i回目）
                 filestat.to_stat_progress(i)
                 self.send_filestat(file_no, filestat, FileStat.E_FILE_PROGRESS)
@@ -150,17 +168,31 @@ class ThunderloadService():
                         filestat.to_stat_failed()
                         # 通知：失敗
                         self.send_filestat(file_no, filestat, FileStat.E_ERROR)
+                        # AppStatus：失敗
+                        AppStatus.set_status(AppStatus.S_ERROR)
                         return
                     else:
                         # リトライ時1秒ずつ遅延させる
                         sleep(i)
 
             # 進捗ファイルの状態をログ出力する
-            self.file_store.log_progress_files()
+            self.file_store.log_progress()
 
-        # 進捗ファイルを削除する
-        self.file_store.clear_progress_files()
+        # AppStatus：完了
+        AppStatus.set_status(AppStatus.S_COMPLETE)
         Log.info("全てのファイルの処理が完了しました")
+
+    def send_appstatus(self, appstatus):
+        """メインアプリへAppStatusの更新をブロードキャストする"""
+        try:
+            intent = Intent(Action.APP)
+            # 自分のアプリ内だけに送信することを明示（これが重要！）
+            intent.setPackage(self.service.getPackageName())
+            intent.putExtra('appstatus', String(str(appstatus)))
+            # ブロードキャストを送信
+            self.service.sendBroadcast(intent)
+        except Exception as e:
+            Log.error(f"Exception: {e}")
 
     def send_filestat(self, file_no, filestat, event):
         """メインアプリへFileStatをブロードキャストする"""

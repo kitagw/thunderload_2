@@ -210,14 +210,29 @@ class LocalFileStore:
                 files_data = json.load(f)
             self.files = [FileStat(data=f) for f in files_data]
             # 進捗ファイルを読み込む
-            self.load_progress_files()
-            # レジュームアップロードである
-            self.resume_upload = True
+            self.load_progress()
             return
 
-        # レジュームアップロードでない
-        self.resume_upload = False
+        # ファイルリストがなければ、ローカルファイルを読み込む
+        self.files = None
+        self.read_files()
 
+    # プロパティ：ファイル数
+    @property
+    def file_count(self):
+        return len(self.files) if self.files else 0
+
+    # プロパティ：全体のファイルサイズ
+    @property
+    def file_size(self):
+        return sum(filestat.file_size for filestat in self.files) if self.files else 0
+
+    # プロパティ：全体のアップロード済のバイト位置
+    @property
+    def range_pos(self):
+        return sum(filestat.range_pos for filestat in self.files) if self.files else 0
+
+    def read_files(self):
         # ローカルファイルの参照パス
         local_path = Config.get(Config.K_LOCAL_PATH) if platform == 'android' else '/home/kitagawa/ピクチャ:/home/kitagawa/pictures'
         Log.info('ローカルパス：{}'.format(local_path))
@@ -263,25 +278,10 @@ class LocalFileStore:
         # ファイル数
         Log.info('アップロード対象ファイル数：{}'.format(self.file_count))
         # ファイルサイズ
-        Log.info('アップロード対象ファイルサイズ：{:,.1f}MB'.format(FileStat.to_view_size(self.file_size)))
-
-    # プロパティ：ファイル数
-    @property
-    def file_count(self):
-        return len(self.files) if self.files else 0
-
-    # プロパティ：全体のファイルサイズ
-    @property
-    def file_size(self):
-        return sum(filestat.file_size for filestat in self.files) if self.files else 0
-
-    # プロパティ：全体のアップロード済のバイト位置
-    @property
-    def range_pos(self):
-        return sum(filestat.range_pos for filestat in self.files) if self.files else 0
+        Log.info('アップロード対象ファイルサイズ：{:,.1f}MB / {:,.1f}MB'.format(FileStat.to_view_size(self.range_pos), FileStat.to_view_size(self.file_size)))
 
     # 進捗ファイルを初期化
-    def init_progress_files(self):
+    def init_progress(self):
         # progressフォルダのbacklog、processing、doneの進捗ファイルを初期化する
         for folder in [ProgressManager.K_BACKLOG, ProgressManager.K_PROCESSING, ProgressManager.K_DONE]:
             folder_path = ProgressManager.get(folder)
@@ -301,7 +301,7 @@ class LocalFileStore:
             json.dump([f.data for f in self.files], f2, indent=2, ensure_ascii=False)
 
     # 進捗ファイルを読み込み
-    def load_progress_files(self):
+    def load_progress(self):
         # backlog、processing、doneの進捗ファイルの存在状況から進捗（FileStat.K_STATUS）を初期化する
         for f in self.files:
             if os.path.exists(os.path.join(ProgressManager.get(ProgressManager.K_BACKLOG), f.file_name)):
@@ -315,14 +315,14 @@ class LocalFileStore:
                 f.status = FileStat.S_UNPROCESSED
 
     # 進捗ファイルの状態を各フォルダのファイル数でログ出力する
-    def log_progress_files(self):
+    def log_progress(self):
         backlog_count = len(os.listdir(ProgressManager.get(ProgressManager.K_BACKLOG)))
         processing_count = len(os.listdir(ProgressManager.get(ProgressManager.K_PROCESSING)))
         done_count = len(os.listdir(ProgressManager.get(ProgressManager.K_DONE)))
         Log.info('進捗：{}/{}/{}'.format(backlog_count, processing_count, done_count))
 
     # 進捗ファイルを削除する
-    def clear_progress_files(self):
+    def clear_progress(self):
         # progressフォルダのfilelist.jsonを削除する
         filelist_path = os.path.join(ProgressManager.get(ProgressManager.K_PROGRESS_BASE), 'filelist.json')
         if os.path.exists(filelist_path):

@@ -6,6 +6,7 @@ import threading
 import traceback
 import os
 from action import Action
+from appstatus import AppStatus
 from config import Config
 from log import Log
 from driveclient import DriveClient
@@ -263,10 +264,10 @@ class ThunderloadWidget(MDWidget):
         except Exception as ex:
             Log.error('DriveClient初期化失敗\n' + repr(ex))
             return
-
+        # ローカルファイルストア初期化
+        self.file_store = LocalFileStore()
         # レシーバー登録
         self.regist_broadcast_receiver()
-
         # 権限リクエスト
         self.request_permissions()
 
@@ -289,16 +290,17 @@ class ThunderloadWidget(MDWidget):
         # 通知、写真と動画の権限のリクエストコールバックで画面を初期化する（権限がないとファイルが読めないため）
         self.init_file_screen()
 
-        if self.file_store.resume_upload:
-            Log.info('前回の続きからアップロードを再開します')
-            # サービス開始
-            Clock.schedule_once(self.start_service, 0)
+        # 実行中、もしくは、停止中であればサービスを開始する
+        match AppStatus.get_status():
+            case AppStatus.S_RUNNING | AppStatus.S_STOPPING:
+                Log.info('サービスを再開します')
+                # サービス開始
+                Clock.schedule_once(self.start_service, 0)
+            case _:
+                pass
             
     # ファイルスクリーン初期化
     def init_file_screen(self):
-        # ローカルファイルストア初期化
-        self.file_store = LocalFileStore()
-
         # ファイル一覧を一度クリア
         # （クリアしないと、同一データでのリフレッシュ後、進捗更新時に画面が更新されなくなる）
         self.ids.file_screen.ids.rv.file_list = []
@@ -314,13 +316,77 @@ class ThunderloadWidget(MDWidget):
             self.ids.file_screen.ids.msg.text = 'ファイルなし'
             Log.warn('ローカルファイルなし')
 
-        # 稲妻ボタンは、ファイルが存在していてレジュームアップロードでない場合のみ活性化する
-        if self.file_store.file_count > 0 and not self.file_store.resume_upload:
-            self.ids.thunder_button.disabled = False
+        Log.info('AppStatus: {}'.format(AppStatus.get_status()))
 
-        # インジケーター更新：黄
-        # 進捗値は self.file_storeで管理している処理済サイズから算出される（レジューム時には続きからの値となる）
-        self._update_progress_indicator(color=[1, 1, 0, 1])
+        match AppStatus.get_status():
+            case AppStatus.S_IDLE:
+                # ファイルが存在している場合に、稲妻ボタンを活性にする
+                if self.file_store.file_count > 0:
+                    # 稲妻ボタンを活性に変更
+                    self.ids.thunder_button.disabled = False
+                    # 稲妻ボタンを黄色に変更
+                    self.ids.thunder_button.color = [1, 1, 0, 1]
+
+                # 更新ボタン活性化
+                self.ids.file_screen.ids.refresh_button.disabled = False
+                # インジケーター更新：黄
+                # 進捗値は self.file_storeで管理している処理済サイズから算出される（レジューム時には続きからの値となる）
+                self._update_progress_indicator(color=[1, 1, 0, 1])
+
+            case AppStatus.S_RUNNING:
+                # 稲妻ボタンを非活性に変更
+                self.ids.thunder_button.disabled = True
+                # 稲妻ボタンを赤色に変更
+                self.ids.thunder_button.color = [1, 0, 0, 1]
+                # 更新ボタン非活性化
+                self.ids.file_screen.ids.refresh_button.disabled = True
+                # インジケーター更新：黄
+                # 進捗値は self.file_storeで管理している処理済サイズから算出される（レジューム時には続きからの値となる）
+                self._update_progress_indicator(color=[1, 1, 0, 1])
+
+            case AppStatus.S_STOPPING:
+                # 稲妻ボタンを非活性にする
+                self.ids.thunder_button.disabled = True
+                # 更新ボタン非活性化
+                self.ids.file_screen.ids.refresh_button.disabled = True
+                # インジケーター更新：黄
+                # 進捗値は self.file_storeで管理している処理済サイズから算出される（レジューム時には続きからの値となる）
+                self._update_progress_indicator(color=[1, 1, 0, 1])
+
+            case AppStatus.S_STOPPED:
+                # 稲妻ボタンを活性に変更
+                self.ids.thunder_button.disabled = False
+                # 稲妻ボタンを黄色に変更
+                self.ids.thunder_button.color = [1, 1, 0, 1]
+                # 更新ボタン活性化
+                self.ids.file_screen.ids.refresh_button.disabled = False
+                # インジケーター更新：黄
+                # 進捗値は self.file_storeで管理している処理済サイズから算出される（レジューム時には続きからの値となる）
+                self._update_progress_indicator(color=[1, 1, 0, 1])
+
+            case AppStatus.S_COMPLETE:
+                # 稲妻ボタンを非活性にする
+                self.ids.thunder_button.disabled = True
+                # 更新ボタン活性化
+                self.ids.file_screen.ids.refresh_button.disabled = False
+                # インジケーター更新：緑
+                # 進捗値は self.file_storeで管理している処理済サイズから算出される（レジューム時には続きからの値となる）
+                self._update_progress_indicator(color=[0, 1, 0, 1])
+                # メッセージにアップロード完了と完了日時を表示する
+                # self.ids.file_screen.ids.msg.text = 'アップロード完了：{}'.format(AppStatus.get_last_status_update_time())
+                self.ids.file_screen.ids.msg.text = 'アップロード完了'
+
+            case AppStatus.S_ERROR:
+                # 稲妻ボタンを非活性にする
+                self.ids.thunder_button.disabled = True
+                # 更新ボタン活性化
+                self.ids.file_screen.ids.refresh_button.disabled = False
+                # インジケーター更新：赤
+                # 進捗値は self.file_storeで管理している処理済サイズから算出される（レジューム時には続きからの値となる）
+                self._update_progress_indicator(color=[1, 0, 0, 1])
+                # メッセージにエラー発生と日時を表示する
+                # self.ids.file_screen.ids.msg.text = 'エラー発生：{}'.format(AppStatus.get_last_status_update_time())
+                self.ids.file_screen.ids.msg.text = 'エラー発生'
 
     # レシーバー登録
     def regist_broadcast_receiver(self):
@@ -334,6 +400,7 @@ class ThunderloadWidget(MDWidget):
             # Log.info('レシーバー作成完了')
             if hasattr(self.br, 'receiver'):
                 intent_filter = IntentFilter()
+                intent_filter.addAction(Action.APP)
                 intent_filter.addAction(Action.UPDATE)
                 intent_filter.addAction(Action.LOG)
                 # Android 14対応
@@ -372,6 +439,12 @@ class ThunderloadWidget(MDWidget):
     
     def on_release_refresh(self):
         Log.info('ファイル一覧をリフレシュします')
+        # 進捗ファイルを削除
+        self.file_store.clear_progress()
+        # ローカルファイルを再読込してファイルストアを更新
+        self.file_store.read_files()
+        # AppStatusをアイドルに更新
+        AppStatus.set_status(AppStatus.S_IDLE)
         # ファイルスクリーン初期化
         self.init_file_screen()
 
@@ -379,21 +452,42 @@ class ThunderloadWidget(MDWidget):
         if self.file_store.file_count == 0:
             return 
 
-        # ボタン非活性化
-        # 稲妻ボタン
-        self.ids.thunder_button.disabled = True
-        # 更新ボタン
-        self.ids.file_screen.ids.refresh_button.disabled = True
-        # サービス開始
-        Clock.schedule_once(self.start_service, 0)
+        match AppStatus.get_status():
+            case AppStatus.S_IDLE:
+                # AppStatusをアイドルから実行中に更新
+                AppStatus.set_status(AppStatus.S_RUNNING)
+                # 連携ファイル初期化
+                self.file_store.init_progress()
+                Log.info('進捗ファイルを初期化しました')
+                # 稲妻ボタンを赤色に変更
+                self.ids.thunder_button.color = [1, 0, 0, 1]
+                # 更新ボタンを非活性化
+                self.ids.file_screen.ids.refresh_button.disabled = True
+                # サービス開始
+                Clock.schedule_once(self.start_service, 0)
+
+            case AppStatus.S_STOPPED:
+                # AppStatusを停止から実行中に更新
+                AppStatus.set_status(AppStatus.S_RUNNING)
+                # 実行する（レジューム）
+                # 稲妻ボタンを赤色に変更
+                self.ids.thunder_button.color = [1, 0, 0, 1]
+                # 更新ボタンを非活性化
+                self.ids.file_screen.ids.refresh_button.disabled = True
+                # サービス開始
+                Clock.schedule_once(self.start_service, 0)
+
+            case AppStatus.S_RUNNING:
+                # AppStatusを実行中から停止中に更新
+                AppStatus.set_status(AppStatus.S_STOPPING)
+                # 稲妻ボタンを非活性にする
+                self.ids.thunder_button.disabled = True
+
+            case _:
+                pass
 
     # サービス開始
     def start_service(self, dt):
-        # 新規アップロードの場合は、進捗ファイルを初期化する（レジュームアップロードの場合は既存の進捗ファイルを使用する）
-        if not self.file_store.resume_upload: 
-            self.file_store.init_progress_files()
-            Log.info('進捗ファイルを初期化しました')
-
         if platform == 'android':
             # クラス名はマニフェストと完全に一致させる
             service_class_name = 'org.kitagw.thunderload_2.ServiceThunderloadservice'
@@ -430,6 +524,21 @@ class ThunderloadWidget(MDWidget):
 
         # intent からデータを取り出してUIを更新
         match intent.getAction():
+            case Action.APP:
+                # intent から appstatus を取り出す
+                appstatus_str = intent.getStringExtra('appstatus')
+                # appstatus_str が存在する場合のみ処理を行う（サービス側でステータス変更時に送信しているはずだが、念のため）
+                if appstatus_str:
+                    match appstatus_str:
+                        case AppStatus.S_STOPPED:
+                            self.on_stopping()
+                        case AppStatus.S_COMPLETE:
+                            self.on_complete()
+                        case AppStatus.S_ERROR:
+                            self.on_error()
+                        case _:
+                            Log.warning(f"Unknown appstatus received: {appstatus_str}")
+
             case Action.UPDATE:
                 # intent から file_no と filestat と event を取り出す
                 file_no_str = intent.getStringExtra('file_no')
@@ -452,14 +561,8 @@ class ThunderloadWidget(MDWidget):
                                 self.on_file_progress(file_no, filestat)
                             case FileStat.E_UPLOAD_PROGRESS:
                                 self.on_upload_progress(file_no, filestat)
-                            case FileStat.E_COMPLETED:
-                                # 最後のファイルの完了イベントを受け取ったら、完了処理を行う
-                                if file_no == self.file_store.file_count:
-                                    self.on_complete(file_no, filestat)
-                            case FileStat.E_ERROR:
-                                self.on_error(file_no, filestat)
                             case _:
-                                Log.warning(f"Unknown event received: {event}") 
+                                pass
 
                     except Exception as e:
                         Log.error(traceback.format_exc())
@@ -491,19 +594,35 @@ class ThunderloadWidget(MDWidget):
         # インジケーター更新
         self._update_progress_indicator()
 
+    # 停止イベント処理
+    def on_stopping(self):
+        # 停止中メッセージを表示
+        self.ids.file_screen.ids.msg.text = '【一時停止】{}'.format(self.ids.file_screen.ids.msg.text)
+        # 稲妻ボタンを活性化
+        self.ids.thunder_button.disabled = False
+        # 稲妻ボタンを黄色に変更
+        self.ids.thunder_button.color = [1, 1, 0, 1]
+        # 更新ボタン活性化
+        self.ids.file_screen.ids.refresh_button.disabled = False
+
     # 完了イベント処理
-    def on_complete(self, file_no, filestat):
-        self.ids.file_screen.ids.msg.text = 'アップロード完了 ({}/{})'.format(file_no, self.file_store.file_count)
+    def on_complete(self):
+        cnt = self.file_store.file_count
+        self.ids.file_screen.ids.msg.text = 'アップロード完了 ({}/{})'.format(cnt, cnt)
         # インジケーター更新：緑100
         self._update_progress_indicator(value=100, color=[0, 1, 0, 1])
+        # 稲妻ボタンを非活性化
+        self.ids.thunder_button.disabled = True
         # 更新ボタン活性化
         self.ids.file_screen.ids.refresh_button.disabled = False
 
     # エラーイベント処理
-    def on_error(self, file_no, filestat):
+    def on_error(self):
         self.ids.file_screen.ids.msg.text = 'アップロード失敗'
         # インジケーター更新：赤
         self._update_progress_indicator(color=[1, 0, 0, 1])
+        # 稲妻ボタンを非活性化
+        self.ids.thunder_button.disabled = True
         # 更新ボタン活性化
         self.ids.file_screen.ids.refresh_button.disabled = False
 
@@ -526,6 +645,7 @@ class ThunderloadWidget(MDWidget):
             app.progress_value = value
         else:
             app.progress_value = self.file_store.range_pos / self.file_store.file_size * 100
+            Log.info(f"Progress: {self.file_store.range_pos} / {self.file_store.file_size} ({app.progress_value:.2f}%)")
         # 色
         if color is not None:
             app.progress_color = color

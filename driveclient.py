@@ -53,7 +53,6 @@ class DriveClient():
         # Log.info('設定ファイルパス: ' + Config.CONFIG_JSON_PATH)
         if self.client_id and self.authority and self.upload_path: 
             self.__init_client()
-            # Log.info('設定項目のClient_ID、authority、アップロードパスを読み込みました')
         else:
             Log.error('設定項目のClient_ID、authority、アップロードパスが登録されていません')
 
@@ -91,7 +90,7 @@ class DriveClient():
             # トークンファイルがローカルにある場合はロード
             jsondata = open(DriveClient.TOKENS_JSON_PATH,'r')    
             self.tokens = json.load(jsondata)
-            Log.info('リフレッシュトークンをトークンファイルからロードしました')
+            Log.info('リフレッシュトークンのファイルロード完了')
         else:
             Log.info('ブラウザ認証を開始します')
             # トークンファイルがない場合はブラウザ認証

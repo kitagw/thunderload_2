@@ -175,20 +175,16 @@ class ThunderloadService():
                         # リトライ時1秒ずつ遅延させる
                         sleep(i)
 
-            # 進捗ファイルの状態をログ出力する
-            self.file_store.log_progress()
-
         # AppStatus：完了
         AppStatus.set_status(AppStatus.S_COMPLETE)
         Log.info("全てのファイルの処理が完了しました")
 
-    def send_appstatus(self, appstatus):
+    def send_appstatus(self):
         """メインアプリへAppStatusの更新をブロードキャストする"""
         try:
             intent = Intent(Action.APP)
             # 自分のアプリ内だけに送信することを明示（これが重要！）
             intent.setPackage(self.service.getPackageName())
-            intent.putExtra('appstatus', String(str(appstatus)))
             # ブロードキャストを送信
             self.service.sendBroadcast(intent)
         except Exception as e:

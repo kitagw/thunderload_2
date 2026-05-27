@@ -222,6 +222,11 @@ class LocalFileStore:
     def file_count(self):
         return len(self.files) if self.files else 0
 
+    # プロパティ：アップロード完了ファイル数
+    @property
+    def completed_file_count(self):
+        return sum(1 for f in self.files if f.status == FileStat.S_FINISHED) if self.files else 0
+
     # プロパティ：全体のファイルサイズ
     @property
     def file_size(self):
@@ -276,9 +281,9 @@ class LocalFileStore:
         self.files = unique_files
 
         # ファイル数
-        Log.info('アップロード対象ファイル数：{}'.format(self.file_count))
+        Log.info('ファイル数：{} / {}'.format(self.completed_file_count, self.file_count))
         # ファイルサイズ
-        Log.info('アップロード対象ファイルサイズ：{:,.1f}MB / {:,.1f}MB'.format(FileStat.to_view_size(self.range_pos), FileStat.to_view_size(self.file_size)))
+        Log.info('ファイルサイズ：{:,.1f} / {:,.1f} MB'.format(FileStat.to_view_size(self.range_pos), FileStat.to_view_size(self.file_size)))
 
     # 進捗ファイルを初期化
     def init_progress(self):

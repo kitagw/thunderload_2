@@ -1,3 +1,4 @@
+import datetime
 import os
 from kivy.utils import platform 
 '''
@@ -76,7 +77,7 @@ class AppStatus:
 
         # ステータス変更を通知する
         if AppStatus.func_send is not None:
-            AppStatus.func_send(new_status)
+            AppStatus.func_send()
 
     # ステータスを確認する
     @staticmethod
@@ -94,7 +95,8 @@ class AppStatus:
             if filename.endswith('.appstatus'):
                 # ステータスの空ファイルが存在する場合は、その更新日時を.strftime('%Y/%m/%d %H:%M:%S')でフォーマットして返す
                 status_file = os.path.join(AppStatus.BASE_PATH, filename)
-                return os.path.getmtime(status_file).strftime('%Y/%m/%d %H:%M:%S')
+                dt = datetime.datetime.fromtimestamp(os.path.getmtime(status_file))
+                return dt.strftime('%Y/%m/%d %H:%M:%S')
         # ステータスの空ファイルが存在しない場合は、M/Aを返す
         return 'N/A'
 

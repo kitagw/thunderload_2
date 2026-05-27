@@ -9,9 +9,9 @@ tService = None
 try:
     # サービスのインスタンスを作成
     tService = ThunderloadService()
-    # ロガーのハンドラーをサービスのsend_logメソッドに設定
+    # ログハンドラをサービスのsend_logメソッドに設定
     Log.handler(tService.send_log, '◎')
-    # AppStatusのハンドラーをサービスのsend_appstatusに設定
+    # AppStatusのハンドラをサービスのsend_appstatusに設定
     AppStatus.handler(tService.send_appstatus)
     # サービスのアップロード処理を開始
     tService.run_upload()

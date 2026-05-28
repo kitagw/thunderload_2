@@ -600,7 +600,11 @@ class ThunderloadWidget(MDWidget):
     def update_progress_indicator(self, color=None):
         # 進捗値は self.file_storeで管理している処理済サイズから算出される（レジューム時には続きからの値となる）
         app = App.get_running_app()
-        app.progress_value = self.file_store.range_pos / self.file_store.file_size * 100
+        if self.file_store.file_size > 0:
+            app.progress_value = self.file_store.range_pos / self.file_store.file_size * 100
+        else:
+            app.progress_value = 0
+
         Log.info(f"進捗率: {self.file_store.range_pos} / {self.file_store.file_size} ({app.progress_value:.2f}%)")
 
         # 色

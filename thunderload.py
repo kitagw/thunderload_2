@@ -347,7 +347,7 @@ class ThunderloadWidget(MDWidget):
     # AppStatusに応じて画面を更新
     def update_screen_by_appstatus(self):
         # AppStatusに応じて画面を更新
-        Log.info('AppStatus: {} ({})'.format(AppStatus.get_status(), AppStatus.get_last_status_update_time()))
+        Log.info('実行状態：{} ({})'.format(AppStatus.get_status(), AppStatus.get_last_status_update_time()))
 
         match AppStatus.get_status():
             case AppStatus.S_IDLE:
@@ -605,7 +605,7 @@ class ThunderloadWidget(MDWidget):
         else:
             app.progress_value = 0
 
-        Log.info(f"進捗率: {self.file_store.range_pos} / {self.file_store.file_size} ({app.progress_value:.2f}%)")
+        Log.info(f"進捗：{self.file_store.range_pos:,} / {self.file_store.file_size:,} ({app.progress_value:.2f}%)")
 
         # 色
         if color is not None:

@@ -65,7 +65,7 @@ class DriveClient():
         self.__init_client()
 
     # ファイルアップロード
-    def upload(self, filestat, on_upload_progress):
+    def upload(self, fileinfo, on_upload_progress):
         # アップロード先のクラウド側のdrive_item
         drive_item = self.client.me.drive.root
         upload_path = Config.get(Config.K_UPLOAD_PATH).split('/')
@@ -74,10 +74,10 @@ class DriveClient():
             drive_item = drive_item.get_by_path(name)
 
        # フォルダ初期化（無かったら作成する）
-        self.__init_folder(drive_item, filestat.year, filestat.date)
+        self.__init_folder(drive_item, fileinfo.year, fileinfo.date)
         # ファイルアップロード
-        remote_drive = drive_item.get_by_path(filestat.year).get_by_path(filestat.date)
-        remote_drive.resumable_upload(filestat.file_path, chunk_size=DriveClient.MBYTE_SIZE *10, chunk_uploaded=on_upload_progress).execute_query()
+        remote_drive = drive_item.get_by_path(fileinfo.year).get_by_path(fileinfo.date)
+        remote_drive.resumable_upload(fileinfo.file_path, chunk_size=DriveClient.MBYTE_SIZE *10, chunk_uploaded=on_upload_progress).execute_query()
 
     # クライアント初期化
     def __init_client(self):

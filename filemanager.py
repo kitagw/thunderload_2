@@ -13,10 +13,10 @@ from PIL import Image, UnidentifiedImageError
 from progressmanager import ProgressManager
 
 '''
-ファイルの状態
+ファイル情報クラス
 インスタンスデータは全て辞書型に保持する。
 '''
-class FileStat:
+class FileInfo:
     # 辞書キー
     # ：ファイルパス
     K_FILE_PATH = 'file_path'
@@ -69,75 +69,75 @@ class FileStat:
 
         # ファイル名、パス情報
         file_path = f'{file_dir}/{file_name}'
-        self.data[FileStat.K_FILE_PATH] = file_path
-        self.data[FileStat.K_FILE_NAME] = file_name
+        self.data[FileInfo.K_FILE_PATH] = file_path
+        self.data[FileInfo.K_FILE_NAME] = file_name
         # ファイルサイズ
-        self.data[FileStat.K_FILE_SIZE] = os.path.getsize(file_path)
+        self.data[FileInfo.K_FILE_SIZE] = os.path.getsize(file_path)
         # ファイル撮影日情報（または更新日j）
-        mdatetime = FileStat.get_mdatetime(file_path, file_name)
-        self.data[FileStat.K_YEAR] = mdatetime.strftime('%Y')
-        self.data[FileStat.K_DATE] = mdatetime.strftime('%Y%m%d_')
+        mdatetime = FileInfo.get_mdatetime(file_path, file_name)
+        self.data[FileInfo.K_YEAR] = mdatetime.strftime('%Y')
+        self.data[FileInfo.K_DATE] = mdatetime.strftime('%Y%m%d_')
         # 初期状態
-        self.data[FileStat.K_STATUS] = FileStat.S_UNPROCESSED
-        self.data[FileStat.K_TRY_COUNT] = 0
-        self.data[FileStat.K_RANGE_POS] = 0
+        self.data[FileInfo.K_STATUS] = FileInfo.S_UNPROCESSED
+        self.data[FileInfo.K_TRY_COUNT] = 0
+        self.data[FileInfo.K_RANGE_POS] = 0
 
     # プロパティ：ファイルパス
     @property
     def file_path(self):
-        return self.data[FileStat.K_FILE_PATH]
+        return self.data[FileInfo.K_FILE_PATH]
     
     # プロパティ：ファイル名
     @property
     def file_name(self):
-        return self.data[FileStat.K_FILE_NAME]
+        return self.data[FileInfo.K_FILE_NAME]
     
     # プロパティ：ファイルサイズ
     @property
     def file_size(self):
-        return self.data[FileStat.K_FILE_SIZE]
+        return self.data[FileInfo.K_FILE_SIZE]
     
     # プロパティ：更新年
     @property
     def year(self):
-        return self.data[FileStat.K_YEAR]
+        return self.data[FileInfo.K_YEAR]
 
     # プロパティ：更新日
     @property
     def date(self):
-        return self.data[FileStat.K_DATE]
+        return self.data[FileInfo.K_DATE]
 
     # プロパティ：アップロードの状態
     @property
     def status(self):
-        return self.data[FileStat.K_STATUS]
+        return self.data[FileInfo.K_STATUS]
     @status.setter
     def status(self, value):
-        self.data[FileStat.K_STATUS] = value
+        self.data[FileInfo.K_STATUS] = value
 
     # プロパティ：試行回数
     @property
     def try_count(self):
-        return self.data[FileStat.K_TRY_COUNT]
+        return self.data[FileInfo.K_TRY_COUNT]
     @try_count.setter
     def try_count(self, value):
-        self.data[FileStat.K_TRY_COUNT] = value
+        self.data[FileInfo.K_TRY_COUNT] = value
 
     # プロパティ：アップロード済のバイト位置
     @property
     def range_pos(self):
-        return self.data[FileStat.K_RANGE_POS]
+        return self.data[FileInfo.K_RANGE_POS]
     @range_pos.setter
     def range_pos(self, value):
-        self.data[FileStat.K_RANGE_POS] = value
+        self.data[FileInfo.K_RANGE_POS] = value
 
-    # ファイルStatを別のFileStatから更新する
+    # FileInfoを別のFileInfoから更新する
     def update_from(self, other):
         self.data.update(other.data)
 
     # 状態遷移：処理中
     def to_stat_progress(self, try_count):
-        self.status = FileStat.S_PROCESSING
+        self.status = FileInfo.S_PROCESSING
         self.try_count = try_count
         self.range_pos = 0
         # backlogファイルをprocessingファイルに移動する
@@ -148,7 +148,7 @@ class FileStat:
 
     # 状態遷移：完了
     def to_stat_successful(self):
-        self.status = FileStat.S_FINISHED
+        self.status = FileInfo.S_FINISHED
         # processingファイルをdoneファイルに移動する
         processing_path = os.path.join(ProgressManager.get(ProgressManager.K_PROCESSING), self.file_name)
         done_path = os.path.join(ProgressManager.get(ProgressManager.K_DONE), self.file_name)
@@ -157,7 +157,7 @@ class FileStat:
 
     # 状態遷移：失敗
     def to_stat_failed(self):
-        self.status = FileStat.S_FAILED
+        self.status = FileInfo.S_FAILED
 
     # アップロード中
     def uploading(self, pos):
@@ -194,7 +194,7 @@ class FileStat:
     def to_view_size(cls, size):
         if size == 0:
             return 0
-        m_size = size / FileStat.MBYTE_SIZE
+        m_size = size / FileInfo.MBYTE_SIZE
         return 0.1 if m_size < 0.1 else m_size
 
 '''
@@ -208,7 +208,7 @@ class LocalFileStore:
         if os.path.exists(filelist_path):
             with open(filelist_path, 'r') as f:
                 files_data = json.load(f)
-            self.files = [FileStat(data=f) for f in files_data]
+            self.files = [FileInfo(data=f) for f in files_data]
             # 進捗ファイルを読み込む
             self.load_progress()
             return
@@ -225,17 +225,17 @@ class LocalFileStore:
     # プロパティ：アップロード完了ファイル数
     @property
     def completed_file_count(self):
-        return sum(1 for f in self.files if f.status == FileStat.S_FINISHED) if self.files else 0
+        return sum(1 for f in self.files if f.status == FileInfo.S_FINISHED) if self.files else 0
 
     # プロパティ：全体のファイルサイズ
     @property
     def file_size(self):
-        return sum(filestat.file_size for filestat in self.files) if self.files else 0
+        return sum(fileinfo.file_size for fileinfo in self.files) if self.files else 0
 
     # プロパティ：全体のアップロード済のバイト位置
     @property
     def range_pos(self):
-        return sum(filestat.range_pos for filestat in self.files) if self.files else 0
+        return sum(fileinfo.range_pos for fileinfo in self.files) if self.files else 0
 
     def read_files(self):
         # ローカルファイルの参照パス
@@ -249,7 +249,7 @@ class LocalFileStore:
             # ローカルパスがあれば、':'で分割して配列に代入する
             local_path_list = local_path.split(':')
 
-        # ローカルパスリストを走査してファイル一覧からFileStatを生成する
+        # ローカルパスリストを走査してファイル一覧からFileInfoを生成する
         files = []
         for path_item in local_path_list:
             Log.info('読込開始：{}'.format(path_item))
@@ -257,7 +257,7 @@ class LocalFileStore:
                 # ローカルファイル一覧読み込み
                 file_count = len(files)
                 files.extend([
-                    FileStat(file_dir=path_item, file_name=f)
+                    FileInfo(file_dir=path_item, file_name=f)
                     for f in os.listdir(path_item)
                     if os.path.isfile(os.path.join(path_item, f))
                 ])
@@ -283,7 +283,7 @@ class LocalFileStore:
         # ファイル数
         Log.info('ファイル数：{} / {}'.format(self.completed_file_count, self.file_count))
         # ファイルサイズ
-        Log.info('ファイルサイズ：{:,.1f} / {:,.1f} MB'.format(FileStat.to_view_size(self.range_pos), FileStat.to_view_size(self.file_size)))
+        Log.info('ファイルサイズ：{:,.1f} / {:,.1f} MB'.format(FileInfo.to_view_size(self.range_pos), FileInfo.to_view_size(self.file_size)))
 
     # 進捗ファイルを初期化
     def init_progress(self):
@@ -307,17 +307,17 @@ class LocalFileStore:
 
     # 進捗ファイルを読み込み
     def load_progress(self):
-        # backlog、processing、doneの進捗ファイルの存在状況から進捗（FileStat.K_STATUS）を初期化する
+        # backlog、processing、doneの進捗ファイルの存在状況から進捗（FileInfo.K_STATUS）を初期化する
         for f in self.files:
             if os.path.exists(os.path.join(ProgressManager.get(ProgressManager.K_BACKLOG), f.file_name)):
-                f.status = FileStat.S_UNPROCESSED
+                f.status = FileInfo.S_UNPROCESSED
             elif os.path.exists(os.path.join(ProgressManager.get(ProgressManager.K_PROCESSING), f.file_name)):
-                f.status = FileStat.S_PROCESSING
+                f.status = FileInfo.S_PROCESSING
             elif os.path.exists(os.path.join(ProgressManager.get(ProgressManager.K_DONE), f.file_name)):
-                f.status = FileStat.S_FINISHED
+                f.status = FileInfo.S_FINISHED
                 f.range_pos = f.file_size # アップロード済のバイト位置はファイルサイズと同じにする
             else:
-                f.status = FileStat.S_UNPROCESSED
+                f.status = FileInfo.S_UNPROCESSED
 
     # 進捗ファイルの状態を各フォルダのファイル数でログ出力する
     def log_progress(self):

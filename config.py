@@ -1,7 +1,6 @@
 import json
 import os
 from kivy.utils import platform 
-from log import Log
 
 '''
 設定管理

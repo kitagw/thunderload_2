@@ -10,7 +10,7 @@ from appstatus import AppStatus
 from config import Config
 from log import Log
 from driveclient import DriveClient
-from filemanager import FileStat, LocalFileStore
+from filemanager import FileInfo, LocalFileStore
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.properties import ListProperty, NumericProperty, ObjectProperty, StringProperty
@@ -62,7 +62,7 @@ for p in [ProgressManager.get(ProgressManager.K_BACKLOG), ProgressManager.get(Pr
         print(f"DEBUG: Created directory: {p}")
 
 # RecycleViewファイル項目
-class FileInfo(MDBoxLayout):
+class FileItem(MDBoxLayout):
     year = StringProperty()
     date = StringProperty()
     file_path = StringProperty()
@@ -531,27 +531,27 @@ class ThunderloadWidget(MDWidget):
                 self.update_screen_by_appstatus()
 
             case Action.UPDATE:
-                # intent から file_no と filestat と event を取り出す
+                # intent から file_no と fileinfo と event を取り出す
                 file_no_str = intent.getStringExtra('file_no')
-                filestat_json = intent.getStringExtra('filestat')
+                fileinfo_json = intent.getStringExtra('fileinfo')
                 event_str = intent.getStringExtra('event')
                 # これらが存在する場合のみ処理を行う（サービス側でイベント発生時に送信しているはずだが、念のため）
-                if filestat_json and file_no_str and event_str:
+                if file_no_str and fileinfo_json and event_str:
                     try:
                         # 文字列から必要なデータを取得
                         file_no = int(file_no_str)
-                        filestat = FileStat(data=json.loads(filestat_json))
+                        fileinfo = FileInfo(data=json.loads(fileinfo_json))
                         event = event_str
                         
                         # ファイルアイテム更新
-                        self.refresh_file_item(file_no, filestat)
+                        self.refresh_file_item(file_no, fileinfo)
 
                         # 進捗更新は、処理中のファイルに対してのみ行う（完了や失敗の更新は on_complete や on_error で行う）
                         match event:
-                            case FileStat.E_FILE_PROGRESS:
-                                self.on_file_progress(file_no, filestat)
-                            case FileStat.E_UPLOAD_PROGRESS:
-                                self.on_upload_progress(file_no, filestat)
+                            case FileInfo.E_FILE_PROGRESS:
+                                self.on_file_progress(file_no, fileinfo)
+                            case FileInfo.E_UPLOAD_PROGRESS:
+                                self.on_upload_progress(file_no, fileinfo)
                             case _:
                                 pass
 
@@ -577,24 +577,24 @@ class ThunderloadWidget(MDWidget):
         super().on_stop()
 
     # 処理中イベント処理
-    def on_file_progress(self, file_no, filestat):
+    def on_file_progress(self, file_no, fileinfo):
         self.ids.file_screen.ids.msg.text = 'アップロード中... ({}/{})'.format(file_no, self.file_store.file_count)
 
     # アップロード中イベント処理
-    def on_upload_progress(self, file_no, filestat):
+    def on_upload_progress(self, file_no, fileinfo):
         # インジケーター更新
         self.update_progress_indicator()
 
     # ファイルアイテム更新
-    def refresh_file_item(self, file_no, filestat):
+    def refresh_file_item(self, file_no, fileinfo):
         # file_no は 1-origin なので -1 してアクセス
         idx = file_no - 1
-        # filestat でファイルストアの該当ファイルを更新
-        self.file_store.files[idx].update_from(filestat) 
+        # fileinfo でファイルストアの該当ファイルを更新
+        self.file_store.files[idx].update_from(fileinfo)
         # RecycleViewのデータを更新するために、いったん空の辞書を割り当ててから新しいデータを割り当てる
         # （これをやらないと、同一データでのリフレッシュ後、進捗更新時に画面が更新されなくなる）
         self.ids.file_screen.ids.rv.file_list[idx] = {}
-        self.ids.file_screen.ids.rv.file_list[idx] = filestat.data
+        self.ids.file_screen.ids.rv.file_list[idx] = fileinfo.data
 
     # インジケーター更新
     def update_progress_indicator(self, color=None):

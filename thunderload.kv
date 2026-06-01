@@ -1,5 +1,5 @@
 ##:kivy
-#:import FileStat filemanager.FileStat
+#:import FileInfo filemanager.FileInfo
 #:import MDActionBottomAppBarButton kivymd.uix.appbar.MDActionBottomAppBarButton
 #:import MDSharedAxisTransition kivymd.uix.transition.transition.MDSharedAxisTransition
 
@@ -47,9 +47,9 @@ ThunderloadWidget:
                     on_release: root.on_release_start()
                     disabled: True
 
-<FileInfo>:
+<FileItem>:
     adaptive_height: True
-    line_color: '#ffff00' if root.status == FileStat.S_PROCESSING else app.theme_cls.backgroundColor if root.status == FileStat.S_FINISHED else '#ff0000' if root.status == FileStat.S_FAILED else '#0066cc'
+    line_color: '#ffff00' if root.status == FileInfo.S_PROCESSING else app.theme_cls.backgroundColor if root.status == FileInfo.S_FINISHED else '#ff0000' if root.status == FileInfo.S_FAILED else '#0066cc'
     line_width: '2sp'
 
     MDBoxLayout:
@@ -57,7 +57,7 @@ ThunderloadWidget:
         adaptive_height: True
 
         MDIcon:
-            icon: 'lightning-bolt' if root.status == FileStat.S_PROCESSING else 'cloud' if root.status == FileStat.S_FINISHED else 'close-thick' if root.status == FileStat.S_FAILED else 'image-filter-hdr'
+            icon: 'lightning-bolt' if root.status == FileInfo.S_PROCESSING else 'cloud' if root.status == FileInfo.S_FINISHED else 'close-thick' if root.status == FileInfo.S_FAILED else 'image-filter-hdr'
             padding: '20sp'
             height: file_label.height
             theme_text_color: 'Custom'
@@ -71,7 +71,7 @@ ThunderloadWidget:
             padding: '7sp'
             theme_text_color: 'Custom'
             text_color: '#ffffff'
-            text: '【{}/{}】{}/{}MB ({})\n　┗ {}'.format(root.year, root.date, '{:,.1f}'.format(FileStat.to_view_size(root.range_pos)), '{:,.1f}'.format(FileStat.to_view_size(root.file_size)), root.try_count, root.file_name)
+            text: '【{}/{}】{}/{}MB ({})\n　┗ {}'.format(root.year, root.date, '{:,.1f}'.format(FileInfo.to_view_size(root.range_pos)), '{:,.1f}'.format(FileInfo.to_view_size(root.file_size)), root.try_count, root.file_name)
 
 <FileScreen>:
     MDBoxLayout:
@@ -120,7 +120,7 @@ ThunderloadWidget:
         FileRecycleView:
             id: rv
             data: self.file_list
-            viewclass: 'FileInfo'
+            viewclass: 'FileItem'
             effect_cls: 'ScrollEffect'
 
             RecycleBoxLayout:

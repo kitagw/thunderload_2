@@ -2,7 +2,7 @@ import json
 from action import Action
 from appstatus import AppStatus
 from driveclient import DriveClient
-from filemanager import FileStat, LocalFileStore
+from filemanager import FileInfo, LocalFileStore
 from jnius import autoclass # type: ignore
 from log import Log
 from time import sleep
@@ -29,7 +29,6 @@ CHANNEL_NAME = 'Thunderload Background Service'
 # サービスが開始されると、CPUを眠らせないようにWakeLockを取得し、フォアグラウンドサービスとして通知を表示します。
 # サービスが停止されると、WakeLockを解放してCPUを眠らせるようにします。
 # これにより、長時間のバックグラウンド処理が可能になりますが、ユーザーのバッテリー消費に注意が必要です。
-# 実際のアップロード処理はrun_upload_loop()メソッド内で実装することができます。
 class ThunderloadService():
     def __init__(self):
         self.service = PythonService.mService
@@ -94,10 +93,10 @@ class ThunderloadService():
 
     def run_upload(self):
         # アップロード進捗通知のコールバック
-        def on_upload_progress(file_no, filestat, range_pos):
-            Log.info('[{}] {}：{}MB アップ済'.format(file_no, filestat.file_name, '{:,.1f}'.format(FileStat.to_view_size(range_pos))))
-            filestat.uploading(range_pos)
-            self.send_filestat(file_no, filestat, FileStat.E_UPLOAD_PROGRESS)
+        def on_upload_progress(file_no, fileinfo, range_pos):
+            Log.info('[{}] {}：{}MB アップ済'.format(file_no, fileinfo.file_name, '{:,.1f}'.format(FileInfo.to_view_size(range_pos))))
+            fileinfo.uploading(range_pos)
+            self.send_fileinfo(file_no, fileinfo, FileInfo.E_UPLOAD_PROGRESS)
 
         # アップロード開始前に、実行中かどうかを確認する
         if not AppStatus.is_status(AppStatus.S_RUNNING):
@@ -125,12 +124,12 @@ class ThunderloadService():
 
         # ローカルファイルを走査
         file_no = 0
-        for filestat in self.file_store.files:
+        for fileinfo in self.file_store.files:
             # 処理中のファイルNoを更新
             file_no += 1
             # ファイルの状態を確認して、未処理のファイルだけを処理する
-            if filestat.status == FileStat.S_FINISHED:
-                Log.info('[{}] {}：既済'.format(file_no, filestat.file_name))
+            if fileinfo.status == FileInfo.S_FINISHED:
+                Log.info('[{}] {}：既済'.format(file_no, fileinfo.file_name))
                 continue
 
             # MAX_TRY_COUNTまで試行する
@@ -143,31 +142,31 @@ class ThunderloadService():
                     return
 
                 # 状態：未→処理中（i回目）
-                filestat.to_stat_progress(i)
-                self.send_filestat(file_no, filestat, FileStat.E_FILE_PROGRESS)
+                fileinfo.to_stat_progress(i)
+                self.send_fileinfo(file_no, fileinfo, FileInfo.E_FILE_PROGRESS)
                 # 通知の内容を更新する
-                self.update_notification(file_no, filestat)
+                self.update_notification(file_no, fileinfo)
 
                 try:
                     # アップロード実行
-                    Log.info('[{}] {}：処理中({})...'.format(file_no, filestat.file_name, i))
-                    # upload に渡すコールバックは filestat をキャプチャしたクロージャにする
-                    # これにより、UI スレッドで実行されるときに filestat が変わっていても
-                    # 正しい FileStat に対して進捗更新できる
-                    self.client.upload(filestat, lambda pos, fs=filestat: on_upload_progress(file_no, fs, pos))
-                    Log.info('[{}] {}：完了({})'.format(file_no, filestat.file_name, i))
+                    Log.info('[{}] {}：処理中({})...'.format(file_no, fileinfo.file_name, i))
+                    # upload に渡すコールバックは FileInfo をキャプチャしたクロージャにする
+                    # これにより、UI スレッドで実行されるときに fileinfo が変わっていても
+                    # 正しい FileInfo に対して進捗更新できる
+                    self.client.upload(fileinfo, lambda pos, fs=fileinfo: on_upload_progress(file_no, fs, pos))
+                    Log.info('[{}] {}：完了({})'.format(file_no, fileinfo.file_name, i))
                     # 状態：処理中→完了
-                    filestat.to_stat_successful()
-                    self.send_filestat(file_no, filestat, FileStat.E_COMPLETED)
+                    fileinfo.to_stat_successful()
+                    self.send_fileinfo(file_no, fileinfo, FileInfo.E_COMPLETED)
                     break
                 except Exception as ex:
-                    Log.error('[{}] {}：失敗({})\n{}'.format(file_no, filestat.file_name, i, repr(ex)))
+                    Log.error('[{}] {}：失敗({})\n{}'.format(file_no, fileinfo.file_name, i, repr(ex)))
                     # 最大試行回数
                     if i == DriveClient.MAX_TRY_COUNT:
                         # 状態：処理中→失敗
-                        filestat.to_stat_failed()
+                        fileinfo.to_stat_failed()
                         # 通知：失敗
-                        self.send_filestat(file_no, filestat, FileStat.E_ERROR)
+                        self.send_fileinfo(file_no, fileinfo, FileInfo.E_ERROR)
                         # AppStatus：失敗
                         AppStatus.set_status(AppStatus.S_ERROR)
                         return
@@ -190,15 +189,15 @@ class ThunderloadService():
         except Exception as e:
             Log.error(f"Exception: {e}")
 
-    def send_filestat(self, file_no, filestat, event):
-        """メインアプリへFileStatをブロードキャストする"""
+    def send_fileinfo(self, file_no, fileinfo, event):
+        """メインアプリへFileInfoをブロードキャストする"""
         try:
             intent = Intent(Action.UPDATE)
             # 自分のアプリ内だけに送信することを明示（これが重要！）
             intent.setPackage(self.service.getPackageName())
-            # FileStatオブジェクトをJSONに変換して送る
+            # FileInfoオブジェクトをJSONに変換して送る
             intent.putExtra('file_no', String(str(file_no)))
-            intent.putExtra('filestat', String(json.dumps(filestat.data)))
+            intent.putExtra('fileinfo', String(json.dumps(fileinfo.data)))
             intent.putExtra('event', String(str(event)))
             # ブロードキャストを送信
             self.service.sendBroadcast(intent)
@@ -220,7 +219,7 @@ class ThunderloadService():
         except Exception as e:
             pass
 
-    def update_notification(self, file_no, filestat):
+    def update_notification(self, file_no, fileinfo):
         """通知の中身を更新する"""
         try:
             app_context = self.service.getApplicationContext()
@@ -237,7 +236,7 @@ class ThunderloadService():
             builder = NotificationBuilder(app_context, CHANNEL_ID)
             builder.setContentTitle(f"アップロード中... ({file_no}/{self.file_store.file_count})")
             # ファイル名を通知の内容に設定
-            builder.setContentText(filestat.file_name) 
+            builder.setContentText(fileinfo.file_name) 
             builder.setSmallIcon(self.service.getApplicationInfo().icon)
             builder.setContentIntent(pending_intent)
             # 通知の音や振動を抑制する（更新のたびに鳴らないように）

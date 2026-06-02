@@ -1,5 +1,3 @@
-#-*- coding: utf-8 -*-
-
 import os
 from kivy.core.text import LabelBase, DEFAULT_FONT
 from kivy.resources import resource_add_path

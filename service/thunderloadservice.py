@@ -2,9 +2,10 @@ import json
 from action import Action
 from appstatus import AppStatus
 from driveclient import DriveClient
-from filemanager import FileInfo, LocalFileStore
 from jnius import autoclass # type: ignore
+from localfilestore import FileInfo, LocalFileStore
 from log import Log
+from progressmanager import ProgressManager
 from time import sleep
 
 # Javaクラスのインポート
@@ -143,6 +144,10 @@ class ThunderloadService():
 
                 # 状態：未→処理中（i回目）
                 fileinfo.to_stat_progress(i)
+                # 最初の試行のときに、進捗ファイルをbacklogからprocessingに移動する
+                if i == 1:
+                    ProgressManager.transition_backlog_to_processing(fileinfo)
+                # 通知：処理中
                 self.send_fileinfo(file_no, fileinfo, FileInfo.E_FILE_PROGRESS)
                 # 通知の内容を更新する
                 self.update_notification(file_no, fileinfo)
@@ -157,6 +162,9 @@ class ThunderloadService():
                     Log.info('[{}] {}：完了({})'.format(file_no, fileinfo.file_name, i))
                     # 状態：処理中→完了
                     fileinfo.to_stat_successful()
+                    # 進捗ファイルをprocessingからdoneに移動する
+                    ProgressManager.transition_processing_to_done(fileinfo)
+                    # 通知：完了
                     self.send_fileinfo(file_no, fileinfo, FileInfo.E_COMPLETED)
                     break
                 except Exception as ex:

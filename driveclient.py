@@ -1,5 +1,3 @@
-#-*- coding: utf-8 -*-
-
 '''
 クラウドストレージドライブクライアント
 フォルダ作成などの処理はすべて、クラウドストレージ側の処理。
@@ -7,8 +5,8 @@
 import json
 import os
 from config import Config
-from log import Log
 from kivy.utils import platform 
+from log import Log
 from msal import PublicClientApplication
 from office365.graph_client import GraphClient
 from office365.onedrive.driveitems.driveItem import ConflictBehavior, DriveItem

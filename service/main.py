@@ -10,9 +10,9 @@ try:
     # サービスのインスタンスを作成
     tService = ThunderloadService()
     # ログハンドラをサービスのsend_logメソッドに設定
-    Log.handler(tService.send_log, '◎')
+    Log.set_handler(tService.send_log, '◎')
     # AppStatusのハンドラをサービスのsend_appstatusに設定
-    AppStatus.handler(tService.send_appstatus)
+    AppStatus.set_handler(tService.send_appstatus)
     # サービスのアップロード処理を開始
     tService.run_upload()
 except Exception as e:

@@ -1,6 +1,7 @@
 import datetime
 import os
 from kivy.utils import platform 
+
 '''
 アプリケーションのステータスを定義するクラス
 ステータスの管理に空ファイルを用いる
@@ -33,9 +34,7 @@ class AppStatus:
 
     func_send = None
 
-    def handler(func):
-        AppStatus.func_send = func
-
+    # 静的初期化
     @classmethod
     def _initialize_static(cls):
         # ベースとなるパスの決定
@@ -49,6 +48,11 @@ class AppStatus:
         # ステータスファイルが存在しない場合は、アイドルのステータスファイルを作成する
         if not any(filename.endswith('.appstatus') for filename in os.listdir(cls.BASE_PATH)):
             cls.set_status(cls.S_IDLE)
+
+    # ステータス変更通知のハンドラーを登録する
+    @classmethod
+    def set_handler(cls, func):
+        cls.func_send = func
 
     # 現在のステータスを取得する
     @staticmethod

@@ -1,5 +1,3 @@
-#-*- coding: utf-8 -*-
-
 import datetime
 import json
 import threading
@@ -8,9 +6,10 @@ import os
 from action import Action
 from appstatus import AppStatus
 from config import Config
-from log import Log
 from driveclient import DriveClient
-from filemanager import FileInfo, LocalFileStore
+from fileinfo import FileInfo
+from localfilestore import LocalFileStore
+from log import Log
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.properties import ListProperty, NumericProperty, ObjectProperty, StringProperty
@@ -26,7 +25,6 @@ from kivymd.uix.screen import MDScreen
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.widget import MDWidget
 from textfield4ja import TextField_JA
-from progressmanager import ProgressManager
 
 # Android APIのインポート（Linux上ではエラーになるため、try-exceptで囲む）
 try:
@@ -54,12 +52,6 @@ except ImportError:
         def __getattr__(self, name): return self
     Intent, LocalBroadcastManager, PythonActivity, currentActivity, Service, IntentFilter = [Dummy()] * 6
     print("Running in desktop environment. Android APIs are mocked.")
-
-# アプリ起動時に一度だけ呼ぶ
-for p in [ProgressManager.get(ProgressManager.K_BACKLOG), ProgressManager.get(ProgressManager.K_PROCESSING), ProgressManager.get(ProgressManager.K_DONE)]:
-    if not os.path.exists(p):
-        os.makedirs(p, exist_ok=True)
-        print(f"DEBUG: Created directory: {p}")
 
 # RecycleViewファイル項目
 class FileItem(MDBoxLayout):
@@ -253,9 +245,9 @@ class ThunderloadWidget(MDWidget):
     def on_kv_post(self, *args, **kwargs):
         super().on_kv_post(*args, **kwargs)
         # ログハンドラ設定
-        Log.handler(self.add_log, '●')
+        Log.set_handler(self.add_log, '●')
         # AppStatusのハンドラ設定
-        AppStatus.handler(self.update_screen_by_appstatus)
+        AppStatus.set_handler(self.update_screen_by_appstatus)
         # DriveClient初期化
         try:
             # Log.info('DriveClient初期化中...')
@@ -441,15 +433,19 @@ class ThunderloadWidget(MDWidget):
             ),
         })
 
+    # fileスクリーンボタン押下処理
     def on_release_file(self, bar_button):
         self.ids.sm.current = 'file'
 
+    # logスクリーンボタン押下処理
     def on_release_log(self, bar_button):
         self.ids.sm.current = 'log'
 
+    # configスクリーンボタン押下処理
     def on_release_config(self, bar_button):
         self.ids.sm.current = 'config'
     
+    # リプレッシュボタン押下処理
     def on_release_refresh(self):
         Log.info('ファイル一覧をリフレシュします')
         # 進捗ファイルを削除
@@ -461,6 +457,7 @@ class ThunderloadWidget(MDWidget):
         # AppStatusをアイドルに更新
         AppStatus.set_status(AppStatus.S_IDLE)
 
+    # スタート（稲妻）ボタン押下処理
     def on_release_start(self):
         if self.file_store.file_count == 0:
             return 
@@ -517,6 +514,7 @@ class ThunderloadWidget(MDWidget):
             currentActivity.startForegroundService(service_intent)
             Log.info('サービス開始しました')
 
+    # broadcast受信コールバック
     def on_broadcast_received(self, context, intent):
         """ブロードキャストを受信した時のコールバック"""
         # UI スレッド外から呼ばれた場合は UI スレッドで実行する
@@ -570,6 +568,7 @@ class ThunderloadWidget(MDWidget):
             case _:
                 Log.warning(f"Unknown action received: {intent.getAction()}")
 
+    # アプリ終了時の処理
     def on_stop(self):
         # アプリ終了時にレシーバーを停止（重要）
         if platform == 'android' and hasattr(self, 'br'):
@@ -611,6 +610,7 @@ class ThunderloadWidget(MDWidget):
         if color is not None:
             app.progress_color = color
 
+# Thunderloadアプリクラス
 class ThunderloadApp(MDApp):
     # アプリ全体で共有する進捗プロパティ
     progress_value = NumericProperty(0)

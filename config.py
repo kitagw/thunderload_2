@@ -21,6 +21,7 @@ class Config():
     # ロック状態
     lock_stat = True
 
+    # 静的初期化
     @classmethod
     def _initialize_static(cls):
         # ベースとなるパスの決定
@@ -31,32 +32,36 @@ class Config():
         else:
             BASE = '/home/kitagawa/onedrive/vscode/python/thunderload_2/resources'
 
-        Config.JSON_PATH = os.path.join(BASE, 'config.json')
+        cls.JSON_PATH = os.path.join(BASE, 'config.json')
 
-        if os.path.isfile(Config.JSON_PATH):
+        if os.path.isfile(cls.JSON_PATH):
             # configファイルがローカルにある場合はロード
-            jsondata = open(Config.JSON_PATH,'r')
-            Config.items = json.load(jsondata)
+            jsondata = open(cls.JSON_PATH,'r')
+            cls.items = json.load(jsondata)
         else:
-            Config.items = json.loads('{}')
+            cls.items = json.loads('{}')
 
     # 取得
-    def get(key):
-        return Config.items[key] if key in Config.items else ''
+    @classmethod
+    def get(cls, key):
+        return cls.items[key] if key in cls.items else ''
 
     # 設定
-    def set(key, value):
-        Config.items[key]=value
+    @classmethod
+    def set(cls, key, value):
+        cls.items[key]=value
         # ファイルに保存
-        with open(Config.JSON_PATH, 'w') as f2:
-            json.dump(Config.items, f2, indent=2)
+        with open(cls.JSON_PATH, 'w') as f2:
+            json.dump(cls.items, f2, indent=2)
 
     # ロック中か検査
-    def islock():
-        return Config.lock_stat
+    @classmethod
+    def islock(cls):
+        return cls.lock_stat
 
     # ロックステータス反転変更
-    def change_lock():
-        Config.lock_stat = not Config.lock_stat
+    @classmethod
+    def change_lock(cls):
+        cls.lock_stat = not cls.lock_stat
 
 Config._initialize_static()

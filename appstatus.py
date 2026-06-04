@@ -1,6 +1,7 @@
 import datetime
 import os
-from kivy.utils import platform 
+
+from kivy.utils import platform
 
 '''
 アプリケーションのステータスを定義するクラス

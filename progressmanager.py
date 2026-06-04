@@ -1,6 +1,8 @@
-import os
 import json
+import os
+
 from kivy.utils import platform
+
 from fileinfo import FileInfo
 from log import Log
 

@@ -1,6 +1,7 @@
 import json
 import os
-from kivy.utils import platform 
+
+from kivy.utils import platform
 
 '''
 設定管理

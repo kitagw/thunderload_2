@@ -1,8 +1,10 @@
 import json
 import os
+
+from kivy.utils import platform
+
 from config import Config
 from fileinfo import FileInfo
-from kivy.utils import platform 
 from log import Log
 from progressmanager import ProgressManager
 

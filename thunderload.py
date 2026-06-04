@@ -1,8 +1,34 @@
 import datetime
 import json
+import os
 import threading
 import traceback
-import os
+
+from kivy.app import App
+from kivy.clock import Clock
+from kivy.properties import (
+    ListProperty,
+    NumericProperty,
+    ObjectProperty,
+    StringProperty,
+)
+from kivy.uix.widget import Widget
+from kivy.utils import escape_markup, platform
+from kivymd.app import MDApp
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.button import MDButton, MDButtonText
+from kivymd.uix.dialog import (
+    MDDialog,
+    MDDialogButtonContainer,
+    MDDialogContentContainer,
+    MDDialogHeadlineText,
+)
+from kivymd.uix.label import MDLabel
+from kivymd.uix.recycleview import MDRecycleView
+from kivymd.uix.screen import MDScreen
+from kivymd.uix.textfield import MDTextField
+from kivymd.uix.widget import MDWidget
+
 from action import Action
 from appstatus import AppStatus
 from config import Config
@@ -10,29 +36,15 @@ from driveclient import DriveClient
 from fileinfo import FileInfo
 from localfilestore import LocalFileStore
 from log import Log
-from kivy.app import App
-from kivy.clock import Clock
-from kivy.properties import ListProperty, NumericProperty, ObjectProperty, StringProperty
-from kivy.uix.widget import Widget
-from kivy.utils import escape_markup, platform
-from kivymd.app import MDApp
-from kivymd.uix.button import MDButton, MDButtonText
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.dialog import MDDialog, MDDialogHeadlineText, MDDialogButtonContainer, MDDialogContentContainer
-from kivymd.uix.label import MDLabel
-from kivymd.uix.recycleview import MDRecycleView
-from kivymd.uix.screen import MDScreen
-from kivymd.uix.textfield import MDTextField
-from kivymd.uix.widget import MDWidget
 from progressmanager import ProgressManager
 from textfield4ja import TextField_JA
 
 # Android APIのインポート（Linux上ではエラーになるため、try-exceptで囲む）
 try:
-    from jnius import autoclass # type: ignore
-    from android.permissions import request_permissions, Permission # type: ignore
-    from android.broadcast import BroadcastReceiver # type: ignore
-    
+    from android.broadcast import BroadcastReceiver  # type: ignore
+    from android.permissions import Permission, request_permissions  # type: ignore
+    from jnius import autoclass  # type: ignore
+
     # Javaクラスのインポート
     String = autoclass('java.lang.String')
     # Androidクラスのインポート

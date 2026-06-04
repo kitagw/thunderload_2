@@ -20,15 +20,22 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
-from kivy.utils import platform
-from kivy.uix.textinput import FL_IS_LINEBREAK, FL_IS_WORDBREAK
-from kivymd.uix.textfield import MDTextField
-from kivy.properties import StringProperty, ListProperty, BooleanProperty, NumericProperty
-from kivy.core.window import Window
-from kivy.base import EventLoop
 import copy
 import re
+
+from kivy.base import EventLoop
 from kivy.clock import Clock
+from kivy.core.window import Window
+from kivy.properties import (
+    BooleanProperty,
+    ListProperty,
+    NumericProperty,
+    StringProperty,
+)
+from kivy.uix.textinput import FL_IS_LINEBREAK, FL_IS_WORDBREAK
+from kivy.utils import platform
+from kivymd.uix.textfield import MDTextField
+
 # Androidでの言語設定を取得
 if platform == 'android':
     from jnius import autoclass

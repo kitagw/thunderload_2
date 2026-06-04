@@ -1,6 +1,8 @@
 import os
-from kivy.core.text import LabelBase, DEFAULT_FONT
+
+from kivy.core.text import DEFAULT_FONT, LabelBase
 from kivy.resources import resource_add_path
+
 from thunderload import ThunderloadApp
 
 # デフォルトフォント指定

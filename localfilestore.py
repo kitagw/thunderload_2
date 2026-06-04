@@ -19,7 +19,7 @@ class LocalFileStore:
                 files_data = json.load(f)
             self.files = [FileInfo(data=f) for f in files_data]
             # 進捗ファイルを読み込む
-            self.load_progress()
+            ProgressManager.load_progress(self.files)
             return
 
         # ファイルリストがなければ、ローカルファイルを読み込む
@@ -94,15 +94,3 @@ class LocalFileStore:
         Log.info('ファイル数：{} / {}'.format(self.completed_file_count, self.file_count))
         # ファイルサイズ
         Log.info('ファイルサイズ：{:,.1f} / {:,.1f} MB'.format(FileInfo.to_view_size(self.range_pos), FileInfo.to_view_size(self.file_size)))
-
-    # 進捗ファイルを初期化
-    def init_progress(self):
-        ProgressManager.init_progress(self.files)
-
-    # 進捗ファイルを読み込み
-    def load_progress(self):
-        ProgressManager.load_progress(self.files)
-
-    # 進捗ファイルを削除する
-    def clear_progress(self):
-        ProgressManager.clear_progress()

@@ -3,6 +3,7 @@ import json
 from kivy.utils import platform
 from fileinfo import FileInfo
 from log import Log
+
 '''
 進捗管理クラス
 進捗の管理方法：
@@ -19,6 +20,9 @@ from log import Log
 - 完了：done
 '''
 class ProgressManager():
+    # クラス変数：初期化フラグ
+    _initialized = False
+
     K_PROGRESS_BASE = 'PROGRESS_BASE'
     K_BACKLOG = 'BACKLOG'
     K_PROCESSING = 'PROCESSING'
@@ -28,6 +32,10 @@ class ProgressManager():
 
     @classmethod
     def _initialize_static(cls):
+        # 静的初期化は、最初のアクセス時に一度だけ行う
+        if cls._initialized:
+            return
+
         # ベースとなるパスの決定
         if platform == 'android':
             BASE = os.environ['ANDROID_PRIVATE']
@@ -46,6 +54,9 @@ class ProgressManager():
         for p in cls.items.values():
             if not os.path.exists(p):
                 os.makedirs(p, exist_ok=True)
+
+        # 静的初期化完了フラグを立てる
+        cls._initialized = True
 
     # 取得
     @classmethod
@@ -109,7 +120,7 @@ class ProgressManager():
         backlog_count = len(os.listdir(cls.get(cls.K_BACKLOG)))
         processing_count = len(os.listdir(cls.get(cls.K_PROCESSING)))
         done_count = len(os.listdir(cls.get(cls.K_DONE)))
-        Log.info('進捗ファイル：{}/{}/{}'.format(backlog_count, processing_count, done_count))
+        Log.info('進捗ファイル：{} / {} / {}'.format(backlog_count, processing_count, done_count))
 
     # 進捗ファイルをbacklogからprocessingに移動する
     @classmethod

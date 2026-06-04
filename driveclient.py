@@ -1,7 +1,3 @@
-'''
-クラウドストレージドライブクライアント
-フォルダ作成などの処理はすべて、クラウドストレージ側の処理。
-'''
 import json
 import os
 from config import Config
@@ -13,9 +9,13 @@ from office365.onedrive.driveitems.driveItem import ConflictBehavior, DriveItem
 from office365.runtime.client_request_exception import ClientRequestException
 
 '''
-ドライブクライアント
+クラウドストレージドライブクライアント
+フォルダ作成などの処理はすべて、クラウドストレージ側の処理。
 '''
 class DriveClient():
+    # クラス変数：初期化フラグ
+    _initialized = False
+
     # Graph API スコープ
     SCOPES = ['User.Read','Files.ReadWrite.All']
     # トークン情報保管先のファイルパス
@@ -27,6 +27,10 @@ class DriveClient():
 
     @classmethod
     def _initialize_static(cls):
+        # 静的初期化は、最初のアクセス時に一度だけ行う
+        if cls._initialized:
+            return
+
         # ベースとなるパスの決定
         if platform == 'android':
             BASE = os.environ['ANDROID_PRIVATE']
@@ -37,28 +41,23 @@ class DriveClient():
 
         DriveClient.TOKENS_JSON_PATH = os.path.join(BASE, 'tokens.json')
 
+        # 静的初期化完了フラグを立てる
+        cls._initialized = True
+
     # コンストラクタ
     def __init__(self):
-        # Graph API パラメータ
-        self.client_id = Config.get(Config.K_CLIENT_ID)
-        self.authority = Config.get(Config.K_AUTHORITY)
-        # アップロードパス
-        self.upload_path = Config.get(Config.K_UPLOAD_PATH)
         # 作成済フォルダリスト
         self.created_folders = []
-
         # クライアント初期化
-        # Log.info('設定ファイルパス: ' + Config.CONFIG_JSON_PATH)
-        if self.client_id and self.authority and self.upload_path: 
-            self.__init_client()
-        else:
-            Log.error('設定項目のClient_ID、authority、アップロードパスが登録されていません')
+        self.__init_client()
 
     # トークン削除
     def delete_token(self):
         # トークンjsonファイル削除
-        os.remove(DriveClient.TOKENS_JSON_PATH)
-        Log.info('トークンファイルを削除しました')
+        if os.path.isfile(DriveClient.TOKENS_JSON_PATH):
+            os.remove(DriveClient.TOKENS_JSON_PATH)
+            Log.info('トークンファイルを削除しました')
+
         # クライアント初期化
         self.__init_client()
 
@@ -83,6 +82,16 @@ class DriveClient():
         トークンをローカルファイルからロードする。
         ローカルにファイルがない場合は、ブラウザ認証でトークンを取得する。
         '''
+        # Graph API パラメータ
+        self.client_id = Config.get(Config.K_CLIENT_ID)
+        self.authority = Config.get(Config.K_AUTHORITY)
+        # アップロードパス
+        self.upload_path = Config.get(Config.K_UPLOAD_PATH)
+
+        if not self.client_id or not self.authority or not self.upload_path:
+            Log.error('設定項目のClient_ID、authority、アップロードパスが登録されていません')
+            return
+
         # Log.info('トークンファイル：{}'.format(DriveClient.TOKENS_JSON_PATH))
         if os.path.isfile(DriveClient.TOKENS_JSON_PATH):
             # トークンファイルがローカルにある場合はロード

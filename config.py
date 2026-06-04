@@ -6,6 +6,9 @@ from kivy.utils import platform
 設定管理
 '''
 class Config():
+        # クラス変数：初期化フラグ
+    _initialized = False
+
     # 設定保管先のファイルパス
     JSON_PATH = None
     # ローカルパス
@@ -24,6 +27,10 @@ class Config():
     # 静的初期化
     @classmethod
     def _initialize_static(cls):
+        # 静的初期化は、最初のアクセス時に一度だけ行う
+        if cls._initialized:
+            return
+
         # ベースとなるパスの決定
         if platform == 'android':
             BASE = os.environ['ANDROID_PRIVATE']
@@ -40,6 +47,9 @@ class Config():
             cls.items = json.load(jsondata)
         else:
             cls.items = json.loads('{}')
+
+        # 静的初期化完了フラグを立てる
+        cls._initialized = True
 
     # 取得
     @classmethod

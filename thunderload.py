@@ -24,6 +24,7 @@ from kivymd.uix.recycleview import MDRecycleView
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.widget import MDWidget
+from progressmanager import ProgressManager
 from textfield4ja import TextField_JA
 
 # Android APIのインポート（Linux上ではエラーになるため、try-exceptで囲む）
@@ -258,6 +259,7 @@ class ThunderloadWidget(MDWidget):
         except Exception as ex:
             Log.error('DriveClient初期化失敗\n' + repr(ex))
             return
+
         # ローカルファイルストア初期化
         self.file_store = LocalFileStore()
         # レシーバー登録
@@ -449,7 +451,7 @@ class ThunderloadWidget(MDWidget):
     def on_release_refresh(self):
         Log.info('ファイル一覧をリフレシュします')
         # 進捗ファイルを削除
-        self.file_store.clear_progress()
+        ProgressManager.clear_progress()
         # ローカルファイルを再読込してファイルストアを更新
         self.file_store.read_files()
         # ファイルスクリーン初期化
@@ -466,8 +468,8 @@ class ThunderloadWidget(MDWidget):
             case AppStatus.S_IDLE:
                 # AppStatusをアイドルから実行中に更新
                 AppStatus.set_status(AppStatus.S_RUNNING)
-                # 連携ファイル初期化
-                self.file_store.init_progress()
+                # 進捗ファイル初期化
+                ProgressManager.init_progress(self.file_store.files)
                 Log.info('進捗ファイルを初期化しました')
                 # サービス開始
                 Clock.schedule_once(self.start_service, 0)

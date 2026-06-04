@@ -15,6 +15,9 @@ from kivy.utils import platform
 ステータスの更新日時は、空ファイルの更新日時を使用する
 '''
 class AppStatus:
+    # クラス変数：初期化フラグ
+    _initialized = False
+
     # *.appstatusの空ファイルを保管するベースパス
     BASE_PATH = None
 
@@ -37,6 +40,10 @@ class AppStatus:
     # 静的初期化
     @classmethod
     def _initialize_static(cls):
+        # 静的初期化は、最初のアクセス時に一度だけ行う
+        if cls._initialized:
+            return
+        
         # ベースとなるパスの決定
         if platform == 'android':
             cls.BASE_PATH = os.environ['ANDROID_PRIVATE']
@@ -48,6 +55,9 @@ class AppStatus:
         # ステータスファイルが存在しない場合は、アイドルのステータスファイルを作成する
         if not any(filename.endswith('.appstatus') for filename in os.listdir(cls.BASE_PATH)):
             cls.set_status(cls.S_IDLE)
+
+        # 静的初期化完了フラグを立てる
+        cls._initialized = True
 
     # ステータス変更通知のハンドラーを登録する
     @classmethod

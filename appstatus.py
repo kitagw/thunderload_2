@@ -115,4 +115,5 @@ class AppStatus:
         # ステータスの空ファイルが存在しない場合は、M/Aを返す
         return 'N/A'
 
+# 静的初期化
 AppStatus._initialize_static()

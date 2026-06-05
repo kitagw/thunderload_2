@@ -46,10 +46,13 @@ class DriveClient():
         # 静的初期化完了フラグを立てる
         cls._initialized = True
 
+    # プロパティ：クライアントが有効か
+    @property
+    def is_valid(self):
+        return self.client is not None
+
     # コンストラクタ
     def __init__(self):
-        # 作成済フォルダリスト
-        self.created_folders = []
         # クライアント初期化
         self.__init_client()
 
@@ -84,6 +87,10 @@ class DriveClient():
         トークンをローカルファイルからロードする。
         ローカルにファイルがない場合は、ブラウザ認証でトークンを取得する。
         '''
+        # クライアントを破棄して初期化する
+        self.client = None
+        # 作成済フォルダリスト
+        self.created_folders = []
         # Graph API パラメータ
         self.client_id = Config.get(Config.K_CLIENT_ID)
         self.authority = Config.get(Config.K_AUTHORITY)
@@ -94,7 +101,6 @@ class DriveClient():
             Log.error('設定項目のClient_ID、authority、アップロードパスが登録されていません')
             return
 
-        # Log.info('トークンファイル：{}'.format(DriveClient.TOKENS_JSON_PATH))
         if os.path.isfile(DriveClient.TOKENS_JSON_PATH):
             # トークンファイルがローカルにある場合はロード
             jsondata = open(DriveClient.TOKENS_JSON_PATH,'r')    
@@ -173,4 +179,5 @@ class DriveClient():
             else:
                 raise ex
 
+# 静的初期化
 DriveClient._initialize_static()

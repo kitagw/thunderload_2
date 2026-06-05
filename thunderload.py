@@ -263,7 +263,6 @@ class ThunderloadWidget(MDWidget):
         AppStatus.set_handler(self.update_screen_by_appstatus)
         # DriveClient初期化
         try:
-            # Log.info('DriveClient初期化中...')
             self.client = DriveClient()
             # 設定画面にDriveClientを設定
             self.ids.config_screen.client = self.client
@@ -329,20 +328,17 @@ class ThunderloadWidget(MDWidget):
     # レシーバー登録
     def regist_broadcast_receiver(self):
         if platform == 'android':
-            # レシーバーの作成と登録（受け皿を先に作る）
-            # ※MyReceiverクラスの定義などはここにある想定
-            self.br = BroadcastReceiver(
-                self.on_broadcast_received, 
-                actions=[Action.UPDATE, Action.LOG]
-            )
-            # Log.info('レシーバー作成完了')
+            # 1. まずフィルターを定義
+            intent_filter = IntentFilter()
+            actions = [Action.APP, Action.UPDATE, Action.LOG]
+            for action in actions:
+                intent_filter.addAction(action)
+
+            # 2. レシーバーを作成し、必要に応じてフィルターを適用
+            self.br = BroadcastReceiver(self.on_broadcast_received, actions=actions)
+
+            # 3. 登録
             if hasattr(self.br, 'receiver'):
-                intent_filter = IntentFilter()
-                intent_filter.addAction(Action.APP)
-                intent_filter.addAction(Action.UPDATE)
-                intent_filter.addAction(Action.LOG)
-                # Android 14対応
-                # Log.info('レシーバー登録中...')
                 currentActivity.registerReceiver(
                     self.br.receiver, 
                     intent_filter, 
@@ -357,8 +353,8 @@ class ThunderloadWidget(MDWidget):
 
         match AppStatus.get_status():
             case AppStatus.S_IDLE:
-                # ファイルが存在している場合に、稲妻ボタンを活性にする
-                if self.file_store.file_count > 0:
+                # ドライブクライアントが有効、かつ、ファイルが存在している場合に、稲妻ボタンを活性にする
+                if self.client.is_valid and self.file_store.file_count > 0:
                     # 稲妻ボタンを活性にする
                     self.ids.thunder_button.disabled = False
                     # 稲妻ボタンを黄色にする

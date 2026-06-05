@@ -75,4 +75,5 @@ class Config():
     def change_lock(cls):
         cls.lock_stat = not cls.lock_stat
 
+# 静的初期化
 Config._initialize_static()

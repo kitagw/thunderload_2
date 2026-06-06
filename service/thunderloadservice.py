@@ -133,7 +133,6 @@ class ThunderloadService():
 
         # DriveClient初期化
         try:
-            Log.info('DriveClient初期化中...')
             self.client = DriveClient()
             Log.info('DriveClient初期化完了')
         except Exception as ex:

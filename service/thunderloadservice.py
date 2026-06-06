@@ -1,14 +1,16 @@
 import json
+from time import sleep
+
+from jnius import autoclass  # type: ignore
+
 from action import Action
 from appstatus import AppStatus
 from driveclient import DriveClient
-from jnius import autoclass # type: ignore
 from localfilestore import FileInfo, LocalFileStore
 from log import Log
 from progressmanager import ProgressManager
-from time import sleep
 
-# Javaクラスのインポート
+# AndroidのクラスをJavaのパッケージ名で指定して取得
 PythonService = autoclass('org.kivy.android.PythonService')
 Context = autoclass('android.content.Context')
 Intent = autoclass('android.content.Intent')
@@ -20,33 +22,46 @@ NotificationManager = autoclass('android.app.NotificationManager')
 PowerManager = autoclass('android.os.PowerManager')
 String = autoclass('java.lang.String')
 
-# 通知IDを定数にしておくと間違いがありません
+# 通知ID（0以外の整数を指定）
 NOTIFICATION_ID = 1
 
+# 通知チャンネルIDと名前
 CHANNEL_ID = 'thunderload_service_channel'
 CHANNEL_NAME = 'Thunderload Background Service'
 
-# このクラスは、Androidのバックグラウンドサービスとして動作するための基本的な構造を提供します。
-# サービスが開始されると、CPUを眠らせないようにWakeLockを取得し、フォアグラウンドサービスとして通知を表示します。
-# サービスが停止されると、WakeLockを解放してCPUを眠らせるようにします。
-# これにより、長時間のバックグラウンド処理が可能になりますが、ユーザーのバッテリー消費に注意が必要です。
+'''
+ThunderloadServiceは、バックグラウンドで動作するサービスのクラスです。
+このサービスは、ローカルファイルをOneDriveにアップロードする処理を実行し、その進捗や状態をメインアプリにブロードキャストで通知します。
+サービスは、Androidのフォアグラウンドサービスとして実装されており、CPUを眠らせないようにWakeLockを使用しています。
+サービスは、以下の機能を提供します：
+- フォアグラウンドサービスの設定と通知の表示
+- CPUを眠らせないためのWakeLockの取得と解放
+- アップロード処理の実行と進捗の通知
+- メインアプリへのAppStatusの更新通知
+- メインアプリへのFileInfoの更新通知
+- メインアプリへのログの通知
+サービスは、アップロード処理の開始前に実行状態を確認し、停止中の場合は処理を開始せず、停止済に状態を変更します。
+アップロード処理中は、各ファイルの状態を更新しながら、進捗をメインアプリに通知します。
+処理が完了したファイルは完了状態に更新され、全てのファイルの処理が完了したらAppStatusを完了に更新します。
+処理中に停止要求があった場合は、停止状態に更新して処理を中断します。
+処理中にエラーが発生した場合は、失敗状態に更新して処理を中断します。
+'''
 class ThunderloadService():
+    # サービスの初期化
     def __init__(self):
         self.service = PythonService.mService
         self.setup_foreground_service()
         self.acquire_wakelock()
 
+    # フォアグラウンドサービスの設定
     def setup_foreground_service(self):
-        Log.info("setup_foreground_service - 1-1")
         # 1. 通知チャンネルの作成 (Android 8.0以上必須)
         importance = NotificationManager.IMPORTANCE_LOW
         channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance)
         
-        Log.info("setup_foreground_service - 1a-1")
         notification_manager = self.service.getSystemService(Context.NOTIFICATION_SERVICE)
         notification_manager.createNotificationChannel(channel)
 
-        Log.info("setup_foreground_service - 2-1")
         # 2. 通知をタップしたときにアプリを開く設定
         app_context = self.service.getApplicationContext()
         app_intent = Intent(app_context, autoclass('org.kivy.android.PythonActivity'))
@@ -57,7 +72,6 @@ class ThunderloadService():
 
         pending_intent = PendingIntent.getActivity(app_context, 0, app_intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE)
 
-        Log.info("setup_foreground_service - 3-1")
         # 3. 通知の構築
         builder = NotificationBuilder(app_context, CHANNEL_ID)
         builder.setContentTitle("サービス実行中")
@@ -66,11 +80,11 @@ class ThunderloadService():
         builder.setContentIntent(pending_intent)
         notification = builder.build()
 
-        Log.info("setup_foreground_service - 4-1")
         # 4. フォアグラウンドサービスとして開始
         # 第1引数は通知ID（0以外）、第2引数は通知オブジェクト
         self.service.startForeground(NOTIFICATION_ID, notification)
 
+    # CPUを眠らせないWakeLockの取得
     def acquire_wakelock(self):
         # CPUを眠らせない設定
         power_manager = self.service.getSystemService(Context.POWER_SERVICE)
@@ -78,12 +92,14 @@ class ThunderloadService():
         wakelock.acquire()
         self.wakelock = wakelock
 
+    # CPUを眠らせないWakeLockの解放
     def release_wakelock(self):
         if self.wakelock and self.wakelock.isHeld():
             self.wakelock.release()
             self.wakelock = None
             Log.info("DEBUG: CPUを解放しました")
 
+    # サービスの停止
     def stop_service(self):
         # WakeLockを解除
         if self.wakelock:
@@ -92,6 +108,7 @@ class ThunderloadService():
         # サービス自体を終了（これをしないと通知バーに残る）
         self.service.stopSelf()
 
+    # アップロード処理の実行
     def run_upload(self):
         # アップロード進捗通知のコールバック
         def on_upload_progress(file_no, fileinfo, range_pos):
@@ -101,10 +118,10 @@ class ThunderloadService():
 
         # アップロード開始前に、実行中かどうかを確認する
         if not AppStatus.is_status(AppStatus.S_RUNNING):
-            Log.info("アップロードは開始しませんでした（AppStatusが実行中ではないため）")
+            Log.info(f"アップロードは開始しませんでした（実行状態が「実行中({AppStatus.S_RUNNING})」ではないため）")
             # 停止中の場合は、停止済に変更する
             if AppStatus.is_status(AppStatus.S_STOPPING):
-                Log.info("AppStatusは停止中でした。AppStatusを停止済に変更します。")
+                Log.info(f"実行状態が「停止中({AppStatus.S_STOPPING})」のため「停止済({AppStatus.S_STOPPED})」に変更します")
                 AppStatus.set_status(AppStatus.S_STOPPED)
 
             return
@@ -186,8 +203,8 @@ class ThunderloadService():
         AppStatus.set_status(AppStatus.S_COMPLETE)
         Log.info("全てのファイルの処理が完了しました")
 
+    # メインアプリへAppStatusの更新をブロードキャストする
     def send_appstatus(self):
-        """メインアプリへAppStatusの更新をブロードキャストする"""
         try:
             intent = Intent(Action.APP)
             # 自分のアプリ内だけに送信することを明示（これが重要！）
@@ -197,8 +214,8 @@ class ThunderloadService():
         except Exception as e:
             Log.error(f"Exception: {e}")
 
+    # メインアプリへFileInfoの更新をブロードキャストする
     def send_fileinfo(self, file_no, fileinfo, event):
-        """メインアプリへFileInfoをブロードキャストする"""
         try:
             intent = Intent(Action.UPDATE)
             # 自分のアプリ内だけに送信することを明示（これが重要！）
@@ -212,8 +229,8 @@ class ThunderloadService():
         except Exception as e:
             Log.error(f"Exception: {e}")
 
+    # メインアプリへログをブロードキャストする
     def send_log(self, process_symbol, level, color, log_text):
-        """メインアプリへログをブロードキャストする"""
         try:
             intent = Intent(Action.LOG)
             # 自分のアプリ内だけに送信することを明示（これが重要！）
@@ -227,8 +244,8 @@ class ThunderloadService():
         except Exception as e:
             pass
 
+    # 通知の内容を更新する
     def update_notification(self, file_no, fileinfo):
-        """通知の中身を更新する"""
         try:
             app_context = self.service.getApplicationContext()
             

@@ -52,7 +52,6 @@ class LocalFileStore:
     def read_files(self):
         # ローカルファイルの参照パス
         local_path = Config.get(Config.K_LOCAL_PATH) if platform == 'android' else '/home/kitagawa/ピクチャ:/home/kitagawa/pictures'
-        Log.info('ローカルパス：{}'.format(local_path))
         # ローカルパスがなければエラー
         if not local_path:
             Log.error('設定のローカルパスが存在しません')
@@ -64,7 +63,6 @@ class LocalFileStore:
         # ローカルパスリストを走査してファイル一覧からFileInfoを生成する
         files = []
         for path_item in local_path_list:
-            Log.info('読込開始：{}'.format(path_item))
             if os.path.isdir(path_item):
                 # ローカルファイル一覧読み込み
                 file_count = len(files)
@@ -73,9 +71,9 @@ class LocalFileStore:
                     for f in os.listdir(path_item)
                     if os.path.isfile(os.path.join(path_item, f))
                 ])
-                Log.info('読込成功：{} ({})'.format(path_item, len(files) - file_count))
+                Log.info('読込完了：{} ({})'.format(path_item, len(files) - file_count))
             else:
-                Log.warn('ディレクトリでない：{}'.format(path_item))
+                Log.warn('スキップ：{}'.format(path_item))
                 continue
 
         # ファイル名の重複は除外する
@@ -92,7 +90,5 @@ class LocalFileStore:
         # アップロード対象のファイルリスト
         self.files = unique_files
 
-        # ファイル数
-        Log.info('ファイル数：{} / {}'.format(self.completed_file_count, self.file_count))
-        # ファイルサイズ
-        Log.info('ファイルサイズ：{:,.1f} / {:,.1f} MB'.format(FileInfo.to_view_size(self.range_pos), FileInfo.to_view_size(self.file_size)))
+        # ファイル数、サイズのログ出力
+        Log.info('読込結果：{} ファイル ({:,.1f} MB)'.format(self.file_count, FileInfo.to_view_size(self.file_size)))

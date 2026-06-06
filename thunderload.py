@@ -522,7 +522,7 @@ class ThunderloadWidget(MDWidget):
 
             # サービスの開始
             currentActivity.startForegroundService(service_intent)
-            Log.info('サービス開始しました')
+            Log.info('サービスを開始しました')
 
     # broadcast受信コールバック
     def on_broadcast_received(self, context, intent):

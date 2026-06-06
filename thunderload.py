@@ -365,6 +365,8 @@ class ThunderloadWidget(MDWidget):
 
                 # 更新ボタン活性化する
                 self.ids.file_screen.ids.refresh_button.disabled = False
+                # 更新ボタンを白色にする
+                self.ids.file_screen.ids.refresh_button.color = [1, 1, 1, 1]
                 # インジケーター更新：黄
                 # 進捗値は self.file_storeで管理している処理済サイズから算出される（レジューム時には続きからの値となる）
                 self.update_progress_indicator(color=[1, 1, 0, 1])
@@ -396,6 +398,8 @@ class ThunderloadWidget(MDWidget):
                 self.ids.thunder_button.color = [1, 1, 0, 1]
                 # 更新ボタン活性化する
                 self.ids.file_screen.ids.refresh_button.disabled = False
+                # 更新ボタンを白色にする
+                self.ids.file_screen.ids.refresh_button.color = [1, 1, 1, 1]
                 # インジケーター更新：灰色
                 # 進捗値は self.file_storeで管理している処理済サイズから算出される（レジューム時には続きからの値となる）
                 self.update_progress_indicator(color=[0.5, 0.5, 0.5, 1])
@@ -407,6 +411,8 @@ class ThunderloadWidget(MDWidget):
                 self.ids.thunder_button.disabled = True
                 # 更新ボタン活性化する
                 self.ids.file_screen.ids.refresh_button.disabled = False
+                # 更新ボタンを白色にする
+                self.ids.file_screen.ids.refresh_button.color = [1, 1, 1, 1]
                 # インジケーター更新：緑
                 # 進捗値は self.file_storeで管理している処理済サイズから算出される（レジューム時には続きからの値となる）
                 self.update_progress_indicator(color=[0, 1, 0, 1])
@@ -418,6 +424,8 @@ class ThunderloadWidget(MDWidget):
                 self.ids.thunder_button.disabled = True
                 # 更新ボタン活性化する
                 self.ids.file_screen.ids.refresh_button.disabled = False
+                # 更新ボタンを白色にする
+                self.ids.file_screen.ids.refresh_button.color = [1, 1, 1, 1]
                 # インジケーター更新：赤
                 # 進捗値は self.file_storeで管理している処理済サイズから算出される（レジューム時には続きからの値となる）
                 self.update_progress_indicator(color=[1, 0, 0, 1])

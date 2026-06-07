@@ -54,7 +54,7 @@ requirements = python3,
     Office365-REST-Python-Client,
     typing-extensions,
     pytz,
-    PIL,
+    pillow,
     pyjnius,
     android,
     jnius

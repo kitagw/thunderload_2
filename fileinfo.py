@@ -150,25 +150,39 @@ class FileInfo:
         '''
         取得優先順
         1. ファイル名先頭8文字
-        2. 画像ファイルEXIFの306属性
-        3. ファイルのタイムスタンプ
+        2. 画像ファイルEXIFのDateTimeOriginal(36867)属性
+        3. 画像ファイルEXIFのDateTime(306)属性
+        4. ファイルのタイムスタンプ
         '''
+        # 1. ファイル名先頭8文字
         try:
             if len(file_name) >= 8:
                 return datetime.datetime.strptime(file_name[:8] , '%Y%m%d')
         except ValueError:
             pass
 
+        # 2. 画像ファイルEXIFのDateTimeOriginal(36867)属性
         try:
-            datetime306 = Image.open(file_path).getexif().get(306)
+            # 古いPillow向けに代替処理を用意する
+            class IFD:
+                Exif = 34665
+
+            date_time_original = Image.open(file_path).getexif().get_ifd(IFD.Exif).get(36867)
+            if date_time_original:
+                return datetime.datetime.strptime(date_time_original, '%Y:%m:%d %H:%M:%S')
         except UnidentifiedImageError as ex:
             pass
 
-        if datetime306:
-            mdatetime = datetime.datetime.strptime(datetime306, '%Y:%m:%d %H:%M:%S')
-        else:
-            mdatetime = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
-        return mdatetime
+        # 3. 画像ファイルEXIFのDateTime(306)属性
+        try:
+            date_time = Image.open(file_path).getexif().get(306)
+            if date_time:
+                return datetime.datetime.strptime(date_time, '%Y:%m:%d %H:%M:%S')
+        except UnidentifiedImageError as ex:
+            pass
+
+        # 4. ファイルのタイムスタンプ
+        return datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
     
     # 表示用ファイルサイズ（MByte表記、最低0.1とする）
     @classmethod

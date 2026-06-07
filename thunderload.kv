@@ -121,7 +121,6 @@ ThunderloadWidget:
             id: rv
             data: self.file_list
             viewclass: 'FileItem'
-            effect_cls: 'ScrollEffect'
 
             RecycleBoxLayout:
                 spacing: '6sp'
@@ -170,8 +169,7 @@ ThunderloadWidget:
         MDRecycleView:
             id: rv
             viewclass: 'LogText'
-            effect_cls: 'ScrollEffect'
- 
+
             RecycleBoxLayout:
                 size_hint: 1, None
                 height: self.minimum_height

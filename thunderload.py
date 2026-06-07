@@ -286,6 +286,9 @@ class ThunderloadWidget(MDWidget):
                 Permission.READ_MEDIA_IMAGES,
                 Permission.READ_MEDIA_VIDEO
             ], self.on_permissions_result)
+        else:
+            # Linux環境では権限リクエストは不要なので、直接コールバックを呼び出して画面を初期化する
+            self.on_permissions_result(None, None)
 
     # 権限リクエストの結果コールバック
     def on_permissions_result(self, permissions, grant_results):

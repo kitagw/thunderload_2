@@ -6,6 +6,7 @@ import traceback
 
 from kivy.app import App
 from kivy.clock import Clock
+from kivy.effects.scroll import ScrollEffect
 from kivy.properties import (
     ListProperty,
     NumericProperty,
@@ -253,10 +254,37 @@ class ConfigScreen(MDScreen):
         )
         self.exit_dialog.open()
 
+# AndroidのKivyMDを完全に騙す、バウンドしないカスタムエフェクト
+class LinuxNoBoundScrollEffect(ScrollEffect):
+    def convert_overscroll(self, *args, **kwargs):
+        return 0  # オーバースクロール（バウンド量）を常にゼロにする
+
 class ThunderloadWidget(MDWidget):
     # component初期化
     def on_kv_post(self, *args, **kwargs):
         super().on_kv_post(*args, **kwargs)
+
+        # ターゲットにするRecycleViewのリスト
+        rv_list = [
+            self.ids.file_screen.ids.rv,
+            self.ids.log_screen.ids.rv
+        ]
+        if platform == 'android':
+            # Android環境：デフォルトの StretchOverScroll 系のバウンド機能を無効化する
+            for rv in rv_list:
+                # 現在入っているAndroid専用クラスのインスタンスを取得
+                current_effect = rv.effect_cls
+                if current_effect:
+                    # オーバースクロール（バウンド）の計算関数を、すべて「0（動かない）」を返す関数にすり替える
+                    current_effect.convert_overscroll = lambda *a, **k: 0
+                    # 念のため、内部の伸縮距離を計算する隠しメソッド（もしあれば）も0にする
+                    if hasattr(current_effect, '_get_overscroll_dist'):
+                        current_effect._get_overscroll_dist = lambda *a, **k: 0
+        else:
+            # Linux（PC）環境：通常のScrollEffect系に差し替える
+            for rv in rv_list:
+                rv.effect_cls = LinuxNoBoundScrollEffect
+
         # ログハンドラ設定
         Log.set_handler(self.add_log, '●')
         # AppStatusのハンドラ設定

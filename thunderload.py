@@ -276,10 +276,8 @@ class ThunderloadWidget(MDWidget):
                 current_effect = rv.effect_cls
                 if current_effect:
                     # オーバースクロール（バウンド）の計算関数を、すべて「0（動かない）」を返す関数にすり替える
-                    current_effect.convert_overscroll = lambda *a, **k: 0
-                    # 念のため、内部の伸縮距離を計算する隠しメソッド（もしあれば）も0にする
-                    if hasattr(current_effect, '_get_overscroll_dist'):
-                        current_effect._get_overscroll_dist = lambda *a, **k: 0
+                    if hasattr(current_effect, 'convert_overscroll'):
+                        current_effect.convert_overscroll = lambda *a, **k: 0
         else:
             # Linux（PC）環境：通常のScrollEffect系に差し替える
             for rv in rv_list:

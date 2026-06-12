@@ -8,6 +8,7 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.effects.scroll import ScrollEffect
 from kivy.properties import (
+    BooleanProperty,
     ListProperty,
     NumericProperty,
     ObjectProperty,
@@ -67,6 +68,17 @@ except ImportError:
     Intent, LocalBroadcastManager, PythonActivity, currentActivity, Service, IntentFilter = [Dummy()] * 6
     print("Running in desktop environment. Android APIs are mocked.")
 
+# AndroidのKivyMDを完全に騙す、位置をフリーズさせるカスタムRecycleView
+class StableRecycleView(MDRecycleView):
+    # 位置をフリーズさせるためのフラグ
+    lock_scroll = BooleanProperty(False)
+
+    def set_visible_views(self, *args, **kwargs):
+        # ロックフラグがTrueの間は、Kivyの自動スクロール（内部位置計算）を完全に無視する
+        if self.lock_scroll:
+            return
+        super().set_visible_views(*args, **kwargs)
+
 # RecycleViewファイル項目
 class FileItem(MDBoxLayout):
     year = StringProperty()
@@ -79,7 +91,7 @@ class FileItem(MDBoxLayout):
     range_pos = NumericProperty()
 
 # ファイルRecycleView
-class FileRecycleView(MDRecycleView):
+class FileRecycleView(StableRecycleView):
     file_list = ListProperty()
 
 # ファイル一覧画面（メイン画面）
@@ -637,10 +649,20 @@ class ThunderloadWidget(MDWidget):
         idx = file_no - 1
         # fileinfo でファイルストアの該当ファイルを更新
         self.file_store.files[idx].update_from(fileinfo)
+
+        # RecycleViewの該当アイテムを更新
+        rv = self.ids.file_screen.ids.rv
+        # 1. 自動スクロール（位置再計算）を完全にフリーズさせる
+        rv.lock_scroll = True
+        # 2. データを安全に書き換える
         # RecycleViewのデータを更新するために、いったん空の辞書を割り当ててから新しいデータを割り当てる
         # （これをやらないと、同一データでのリフレッシュ後、進捗更新時に画面が更新されなくなる）
-        self.ids.file_screen.ids.rv.file_list[idx] = {}
-        self.ids.file_screen.ids.rv.file_list[idx] = fileinfo.data
+        rv.file_list[idx] = {}
+        rv.file_list[idx] = fileinfo.data
+        # 3. Kivyのデータ更新処理が完全に終わった直後に、ロックを解除する
+        def unlock(*args):
+            rv.lock_scroll = False
+        Clock.schedule_once(unlock, 0)
 
     # インジケーター更新
     def update_progress_indicator(self, color=None):

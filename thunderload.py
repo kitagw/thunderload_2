@@ -315,8 +315,6 @@ class ThunderloadWidget(MDWidget):
             Log.error('DriveClient初期化失敗\n' + repr(ex))
             return
 
-        # ローカルファイルストア初期化
-        self.file_store = LocalFileStore()
         # レシーバー登録
         self.regist_broadcast_receiver()
         # 権限リクエスト
@@ -341,8 +339,15 @@ class ThunderloadWidget(MDWidget):
             Clock.schedule_once(lambda dt: self.on_permissions_result(permissions, grant_results), 0)
             return
 
-        # 通知、写真と動画の権限のリクエストコールバックで画面を初期化する（権限がないとファイルが読めないため）
-        self.init_file_screen()
+        # ローカルファイルストア初期化
+        self.file_store = LocalFileStore()
+        # ローカルファイルが無効（変更あり）の場合で、AppStatusが完了、または、エラーの場合はリフレッシュ
+        if not self.file_store.valid and AppStatus.get_status() in (AppStatus.S_COMPLETE, AppStatus.S_ERROR):
+            self.on_release_refresh()
+        else:
+            # リフレッシュしない場合は、ファイルスクリーンの初期化のみ
+            self.init_file_screen()
+
         # 現在のAppStatusに応じて画面を更新
         self.update_screen_by_appstatus()
 

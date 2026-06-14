@@ -22,12 +22,18 @@ class LocalFileStore:
             self.files = [FileInfo(data=f) for f in files_data]
             # 進捗ファイルを読み込む
             ProgressManager.load_progress(self.files)
-            return
+            # filelist.jsonで読み込んだファイルが実在する場合は有効フラグを立てる
+            self._valid = all(os.path.isfile(f.file_path) for f in self.files)
+        else:
+            # ファイルリストがなければ、ローカルファイルを読み込む
+            self.files = None
+            self.read_files()
 
-        # ファイルリストがなければ、ローカルファイルを読み込む
-        self.files = None
-        self.read_files()
-
+    # プロパティ：有効フラグ
+    @property
+    def valid(self):
+        return self._valid
+    
     # プロパティ：ファイル数
     @property
     def file_count(self):
@@ -89,6 +95,9 @@ class LocalFileStore:
 
         # アップロード対象のファイルリスト
         self.files = unique_files
+
+        # 有効フラグを立てる
+        self._valid = True
 
         # ファイル数、サイズのログ出力
         Log.info('読込結果：{} ファイル ({:,.1f} MB)'.format(self.file_count, FileInfo.to_view_size(self.file_size)))

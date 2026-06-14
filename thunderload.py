@@ -659,17 +659,18 @@ class ThunderloadWidget(MDWidget):
         # RecycleViewの該当アイテムを更新
         rv = self.ids.file_screen.ids.rv
         # 1. 自動スクロール（位置再計算）を完全にフリーズさせる
-        rv.lock_scroll = True
-        # 2. データを安全に書き換える
-        # RecycleViewのデータを更新するために、いったん空の辞書を割り当ててから新しいデータを割り当てる
-        # （これをやらないと、同一データでのリフレッシュ後、進捗更新時に画面が更新されなくなる）
-        # rv.file_list[idx] = {}
-        rv.file_list[idx] = fileinfo.data
-        rv.refresh_from_data()
-        # 3. Kivyのデータ更新処理が完全に終わった直後に、ロックを解除する
-        def unlock(*args):
-            rv.lock_scroll = False
-        Clock.schedule_once(unlock, 0)
+        try:
+            rv.lock_scroll = True
+            # 2. データを安全に書き換える
+            # RecycleViewのデータを更新するために、いったん空の辞書を割り当ててから新しいデータを割り当てる
+            # （これをやらないと、同一データでのリフレッシュ後、進捗更新時に画面が更新されなくなる）
+            rv.file_list[idx] = {}
+            rv.file_list[idx] = fileinfo.data
+            # 3. Kivyのデータ更新処理が完全に終わった直後に、ロックを解除する
+        finally:
+            def unlock(*args):
+                rv.lock_scroll = False
+            Clock.schedule_once(unlock, 0)
 
     # インジケーター更新
     def update_progress_indicator(self, color=None):

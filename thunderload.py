@@ -671,8 +671,8 @@ class ThunderloadWidget(MDWidget):
             # （これをやらないと、同一データでのリフレッシュ後、進捗更新時に画面が更新されなくなる）
             rv.file_list[idx] = {}
             rv.file_list[idx] = fileinfo.data
-            # 3. Kivyのデータ更新処理が完全に終わった直後に、ロックを解除する
         finally:
+            # 3. Kivyのデータ更新処理が完全に終わった直後に、ロックを解除する
             def unlock(*args):
                 rv.lock_scroll = False
             Clock.schedule_once(unlock, 0)
@@ -686,7 +686,7 @@ class ThunderloadWidget(MDWidget):
         else:
             app.progress_value = 0
 
-        Log.info(f"進捗：{self.file_store.range_pos:,} / {self.file_store.file_size:,} ({app.progress_value:.2f}%)")
+        Log.info(f"[✓] {self.file_store.range_pos:,} / {self.file_store.file_size:,} ({app.progress_value:.2f}%)")
 
         # 色
         if color is not None:

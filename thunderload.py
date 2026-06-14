@@ -73,11 +73,17 @@ class StableRecycleView(MDRecycleView):
     # 位置をフリーズさせるためのフラグ
     lock_scroll = BooleanProperty(False)
 
-    def set_visible_views(self, *args, **kwargs):
-        # ロックフラグがTrueの間は、Kivyの自動スクロール（内部位置計算）を完全に無視する
+    def refresh_from_data(self, *largs, **kwargs):
         if self.lock_scroll:
-            return
-        super().set_visible_views(*args, **kwargs)
+            # 現在のスクロール位置を退避
+            self.current_scroll_y = self.scroll_y
+        super().refresh_from_data(*largs, **kwargs)
+
+    def refresh_from_layout(self, *largs, **kwargs):
+        super().refresh_from_layout(*largs, **kwargs)
+        if self.lock_scroll and hasattr(self, 'current_scroll_y'):
+            # 退避していたスクロール位置に戻す
+            self.scroll_y = self.current_scroll_y
 
 # RecycleViewファイル項目
 class FileItem(MDBoxLayout):
@@ -657,8 +663,9 @@ class ThunderloadWidget(MDWidget):
         # 2. データを安全に書き換える
         # RecycleViewのデータを更新するために、いったん空の辞書を割り当ててから新しいデータを割り当てる
         # （これをやらないと、同一データでのリフレッシュ後、進捗更新時に画面が更新されなくなる）
-        rv.file_list[idx] = {}
+        # rv.file_list[idx] = {}
         rv.file_list[idx] = fileinfo.data
+        rv.refresh_from_data()
         # 3. Kivyのデータ更新処理が完全に終わった直後に、ロックを解除する
         def unlock(*args):
             rv.lock_scroll = False

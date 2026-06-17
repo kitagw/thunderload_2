@@ -8,12 +8,12 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.effects.scroll import ScrollEffect
 from kivy.properties import (
-    BooleanProperty,
     ListProperty,
     NumericProperty,
     ObjectProperty,
     StringProperty,
 )
+from kivy.uix.recycleview.views import RecycleDataViewBehavior
 from kivy.uix.widget import Widget
 from kivy.utils import escape_markup, platform
 from kivymd.app import MDApp
@@ -68,25 +68,8 @@ except ImportError:
     Intent, LocalBroadcastManager, PythonActivity, currentActivity, Service, IntentFilter = [Dummy()] * 6
     print("Running in desktop environment. Android APIs are mocked.")
 
-# AndroidのKivyMDを完全に騙す、位置をフリーズさせるカスタムRecycleView
-class StableRecycleView(MDRecycleView):
-    # 位置をフリーズさせるためのフラグ
-    lock_scroll = BooleanProperty(False)
-
-    def refresh_from_data(self, *largs, **kwargs):
-        if self.lock_scroll:
-            # 現在のスクロール位置を退避
-            self.current_scroll_y = self.scroll_y
-        super().refresh_from_data(*largs, **kwargs)
-
-    def refresh_from_layout(self, *largs, **kwargs):
-        super().refresh_from_layout(*largs, **kwargs)
-        if self.lock_scroll and hasattr(self, 'current_scroll_y'):
-            # 退避していたスクロール位置に戻す
-            self.scroll_y = self.current_scroll_y
-
 # RecycleViewファイル項目
-class FileItem(MDBoxLayout):
+class FileItem(RecycleDataViewBehavior, MDBoxLayout):
     year = StringProperty()
     date = StringProperty()
     file_path = StringProperty()
@@ -96,9 +79,24 @@ class FileItem(MDBoxLayout):
     try_count = NumericProperty()
     range_pos = NumericProperty()
 
+    def refresh_view_attrs(self, rv, index, data):
+        # 1. 自身のプロパティを更新
+        # これによりkv側のバインディングが自動で発火します
+        self.year = data.get(FileInfo.K_YEAR, '')
+        self.date = data.get(FileInfo.K_DATE, '')
+        self.file_path = data.get(FileInfo.K_FILE_PATH, '')
+        self.file_name = data.get(FileInfo.K_FILE_NAME, '')
+        self.file_size = data.get(FileInfo.K_FILE_SIZE, 0)
+        self.status = data.get(FileInfo.K_STATUS, '')
+        self.try_count = data.get(FileInfo.K_TRY_COUNT, 0)
+        self.range_pos = data.get(FileInfo.K_RANGE_POS, 0)
+        
+        # 2. 親クラスの処理を呼ぶ（必須）
+        return super().refresh_view_attrs(rv, index, data)
+    
 # ファイルRecycleView
-class FileRecycleView(StableRecycleView):
-    file_list = ListProperty()
+class FileRecycleView(MDRecycleView):
+    pass
 
 # ファイル一覧画面（メイン画面）
 class FileScreen(MDScreen):
@@ -364,10 +362,10 @@ class ThunderloadWidget(MDWidget):
     def init_file_screen(self):
         # ファイル一覧を一度クリア
         # （クリアしないと、同一データでのリフレッシュ後、進捗更新時に画面が更新されなくなる）
-        self.ids.file_screen.ids.rv.file_list = []
+        self.ids.file_screen.ids.rv.data = []
         # 画面コンポーネント初期化
         if self.file_store.file_count > 0:
-            self.ids.file_screen.ids.rv.file_list.extend(
+            self.ids.file_screen.ids.rv.data.extend(
                 file.data
                 for file in self.file_store.files
             )
@@ -657,25 +655,13 @@ class ThunderloadWidget(MDWidget):
     # ファイルアイテム更新
     def refresh_file_item(self, file_no, fileinfo):
         # file_no は 1-origin なので -1 してアクセス
-        idx = file_no - 1
+        index = file_no - 1
         # fileinfo でファイルストアの該当ファイルを更新
-        self.file_store.files[idx].update_from(fileinfo)
-
+        self.file_store.files[index].update_from(fileinfo)
         # RecycleViewの該当アイテムを更新
         rv = self.ids.file_screen.ids.rv
-        # 1. 自動スクロール（位置再計算）を完全にフリーズさせる
-        try:
-            rv.lock_scroll = True
-            # 2. データを安全に書き換える
-            # RecycleViewのデータを更新するために、いったん空の辞書を割り当ててから新しいデータを割り当てる
-            # （これをやらないと、同一データでのリフレッシュ後、進捗更新時に画面が更新されなくなる）
-            rv.file_list[idx] = {}
-            rv.file_list[idx] = fileinfo.data
-        finally:
-            # 3. Kivyのデータ更新処理が完全に終わった直後に、ロックを解除する
-            def unlock(*args):
-                rv.lock_scroll = False
-            Clock.schedule_once(unlock, 0)
+        rv.data[index] = {}
+        rv.data[index] = fileinfo.data
 
     # インジケーター更新
     def update_progress_indicator(self, color=None):

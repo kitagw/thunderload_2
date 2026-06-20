@@ -671,9 +671,8 @@ class ThunderloadWidget(MDWidget):
             app.progress_value = self.file_store.range_pos / self.file_store.file_size * 100
         else:
             app.progress_value = 0
-
+        # 進捗ログ出力
         Log.info(f"[✓] {self.file_store.range_pos:,} / {self.file_store.file_size:,} ({app.progress_value:.2f}%)")
-
         # 色
         if color is not None:
             app.progress_color = color

@@ -38,7 +38,7 @@ from kivymd.uix.textfield import MDTextField
 
 # Androidでの言語設定を取得
 if platform == 'android':
-    from jnius import autoclass
+    from jnius import autoclass  # type: ignore
     Locale = autoclass('java.util.Locale')
     print('言語設定は...; ', Locale.getDefault().getLanguage())
 #override TextInput

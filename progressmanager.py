@@ -24,14 +24,15 @@ from log import Log
 class ProgressManager():
     # クラス変数：初期化フラグ
     _initialized = False
-
+    # クラス変数：キー定義
     K_PROGRESS_BASE = 'PROGRESS_BASE'
     K_BACKLOG = 'BACKLOG'
     K_PROCESSING = 'PROCESSING'
     K_DONE = 'DONE'
-
+    # クラス変数：進捗管理フォルダパス
     items = {}
 
+    # 初期化処理
     @classmethod
     def _initialize_static(cls):
         # 静的初期化は、最初のアクセス時に一度だけ行う

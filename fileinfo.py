@@ -70,7 +70,9 @@ class FileInfo:
         self.data[FileInfo.K_DATE] = mdatetime.strftime('%Y%m%d_')
         # 初期状態
         self.data[FileInfo.K_STATUS] = FileInfo.S_UNPROCESSED
+        # 試行回数
         self.data[FileInfo.K_TRY_COUNT] = 0
+        # バイト位置
         self.data[FileInfo.K_RANGE_POS] = 0
 
     # プロパティ：ファイルパス

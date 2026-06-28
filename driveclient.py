@@ -9,6 +9,7 @@ from office365.runtime.client_request_exception import ClientRequestException
 
 from config import Config
 from log import Log
+from pathutils import get_app_base_path
 
 '''
 クラウドストレージドライブクライアント
@@ -39,7 +40,7 @@ class DriveClient():
             if BASE.endswith('/app'):
                 BASE = os.path.dirname(BASE) # これで1つ上の /files フォルダに戻る
         else:
-            BASE = '/home/kitagawa/onedrive/vscode/python/thunderload_2/resources'
+            BASE = get_app_base_path()
 
         DriveClient.TOKENS_JSON_PATH = os.path.join(BASE, 'tokens.json')
 

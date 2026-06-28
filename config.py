@@ -3,6 +3,8 @@ import os
 
 from kivy.utils import platform
 
+from pathutils import get_app_base_path
+
 '''
 設定管理
 '''
@@ -38,7 +40,7 @@ class Config():
             if BASE.endswith('/app'):
                 BASE = os.path.dirname(BASE) # これで1つ上の /files フォルダに戻る
         else:
-            BASE = '/home/kitagawa/onedrive/vscode/python/thunderload_2/resources'
+            BASE = get_app_base_path()
 
         cls.JSON_PATH = os.path.join(BASE, 'config.json')
 

@@ -5,6 +5,7 @@ from kivy.utils import platform
 
 from fileinfo import FileInfo
 from log import Log
+from pathutils import get_app_base_path
 
 '''
 進捗管理クラス
@@ -45,7 +46,7 @@ class ProgressManager():
             if BASE.endswith('/app'):
                 BASE = os.path.dirname(BASE) # これで1つ上の /files フォルダに戻る
         else:
-            BASE = '/home/kitagawa/onedrive/vscode/python/thunderload_2/resources'
+            BASE = get_app_base_path()
 
         # 各ステータス用フォルダのパス
         cls.items[cls.K_PROGRESS_BASE] = os.path.join(BASE, 'progress')

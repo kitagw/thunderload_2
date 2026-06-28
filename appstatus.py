@@ -3,6 +3,8 @@ import os
 
 from kivy.utils import platform
 
+from pathutils import get_app_base_path
+
 '''
 アプリケーションのステータスを定義するクラス
 ステータスの管理に空ファイルを用いる
@@ -51,7 +53,7 @@ class AppStatus:
             if cls.BASE_PATH.endswith('/app'):
                 cls.BASE_PATH = os.path.dirname(cls.BASE_PATH) # これで1つ上の /files フォルダに戻る
         else:
-            cls.BASE_PATH = '/home/kitagawa/onedrive/vscode/python/thunderload_2/resources'
+            cls.BASE_PATH = get_app_base_path()
         
         # ステータスファイルが存在しない場合は、アイドルのステータスファイルを作成する
         if not any(filename.endswith('.appstatus') for filename in os.listdir(cls.BASE_PATH)):

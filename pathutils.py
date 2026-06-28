@@ -10,6 +10,7 @@ def get_app_base_path():
         if base and base.endswith('/app'):
             base = os.path.dirname(base)
         if base:
+            ensure_dir(base)
             return base
 
     repo_root = os.path.dirname(os.path.abspath(__file__))
@@ -20,7 +21,9 @@ def get_app_base_path():
         if os.path.isdir(candidate):
             return candidate
 
-    return os.path.join(repo_root, 'resources')
+    base = os.path.join(repo_root, 'resources')
+    ensure_dir(base)
+    return base
 
 
 def ensure_dir(path):

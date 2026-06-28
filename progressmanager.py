@@ -1,11 +1,9 @@
 import json
 import os
 
-from kivy.utils import platform
-
 from fileinfo import FileInfo
 from log import Log
-from pathutils import get_app_base_path
+from pathutils import get_resource_path
 
 '''
 進捗管理クラス
@@ -41,18 +39,13 @@ class ProgressManager():
             return
 
         # ベースとなるパスの決定
-        if platform == 'android':
-            BASE = os.environ['ANDROID_PRIVATE']
-            if BASE.endswith('/app'):
-                BASE = os.path.dirname(BASE) # これで1つ上の /files フォルダに戻る
-        else:
-            BASE = get_app_base_path()
+        BASE = get_resource_path('progress')
 
         # 各ステータス用フォルダのパス
-        cls.items[cls.K_PROGRESS_BASE] = os.path.join(BASE, 'progress')
-        cls.items[cls.K_BACKLOG] = os.path.join(cls.items[cls.K_PROGRESS_BASE], 'backlog')
-        cls.items[cls.K_PROCESSING] = os.path.join(cls.items[cls.K_PROGRESS_BASE], 'processing')
-        cls.items[cls.K_DONE] = os.path.join(cls.items[cls.K_PROGRESS_BASE], 'done')
+        cls.items[cls.K_PROGRESS_BASE] = BASE
+        cls.items[cls.K_BACKLOG] = os.path.join(BASE, 'backlog')
+        cls.items[cls.K_PROCESSING] = os.path.join(BASE, 'processing')
+        cls.items[cls.K_DONE] = os.path.join(BASE, 'done')
 
         # 各ステータス用フォルダが存在しない場合は作成する
         for p in cls.items.values():

@@ -1,9 +1,7 @@
 import json
 import os
 
-from kivy.utils import platform
-
-from pathutils import get_app_base_path
+from pathutils import get_resource_path
 
 '''
 設定管理
@@ -35,14 +33,7 @@ class Config():
             return
 
         # ベースとなるパスの決定
-        if platform == 'android':
-            BASE = os.environ['ANDROID_PRIVATE']
-            if BASE.endswith('/app'):
-                BASE = os.path.dirname(BASE) # これで1つ上の /files フォルダに戻る
-        else:
-            BASE = get_app_base_path()
-
-        cls.JSON_PATH = os.path.join(BASE, 'config.json')
+        cls.JSON_PATH = get_resource_path('config.json')
 
         if os.path.isfile(cls.JSON_PATH):
             # configファイルがローカルにある場合はロード

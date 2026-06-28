@@ -1,7 +1,6 @@
 import json
 import os
 
-from kivy.utils import platform
 from msal import PublicClientApplication
 from office365.graph_client import GraphClient
 from office365.onedrive.driveitems.driveItem import ConflictBehavior, DriveItem
@@ -9,7 +8,7 @@ from office365.runtime.client_request_exception import ClientRequestException
 
 from config import Config
 from log import Log
-from pathutils import get_app_base_path
+from pathutils import get_resource_path
 
 '''
 クラウドストレージドライブクライアント
@@ -35,14 +34,7 @@ class DriveClient():
             return
 
         # ベースとなるパスの決定
-        if platform == 'android':
-            BASE = os.environ['ANDROID_PRIVATE']
-            if BASE.endswith('/app'):
-                BASE = os.path.dirname(BASE) # これで1つ上の /files フォルダに戻る
-        else:
-            BASE = get_app_base_path()
-
-        DriveClient.TOKENS_JSON_PATH = os.path.join(BASE, 'tokens.json')
+        DriveClient.TOKENS_JSON_PATH = get_resource_path('tokens.json')
 
         # 静的初期化完了フラグを立てる
         cls._initialized = True

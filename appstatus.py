@@ -1,9 +1,7 @@
 import datetime
 import os
 
-from kivy.utils import platform
-
-from pathutils import get_app_base_path
+from pathutils import get_app_base_path, get_resource_path
 
 '''
 アプリケーションのステータスを定義するクラス
@@ -48,12 +46,7 @@ class AppStatus:
             return
         
         # ベースとなるパスの決定
-        if platform == 'android':
-            cls.BASE_PATH = os.environ['ANDROID_PRIVATE']
-            if cls.BASE_PATH.endswith('/app'):
-                cls.BASE_PATH = os.path.dirname(cls.BASE_PATH) # これで1つ上の /files フォルダに戻る
-        else:
-            cls.BASE_PATH = get_app_base_path()
+        cls.BASE_PATH = get_app_base_path()
         
         # ステータスファイルが存在しない場合は、アイドルのステータスファイルを作成する
         if not any(filename.endswith('.appstatus') for filename in os.listdir(cls.BASE_PATH)):

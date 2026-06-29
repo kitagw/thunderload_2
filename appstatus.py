@@ -1,7 +1,7 @@
 import datetime
 import os
 
-from pathutils import get_app_base_path, get_resource_path
+from pathutils import get_base_path
 
 '''
 アプリケーションのステータスを定義するクラス
@@ -46,7 +46,7 @@ class AppStatus:
             return
         
         # ベースとなるパスの決定
-        cls.BASE_PATH = get_app_base_path()
+        cls.BASE_PATH = get_base_path()
         
         # ステータスファイルが存在しない場合は、アイドルのステータスファイルを作成する
         if not any(filename.endswith('.appstatus') for filename in os.listdir(cls.BASE_PATH)):

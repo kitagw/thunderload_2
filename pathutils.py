@@ -3,8 +3,9 @@ import os
 from kivy.utils import platform
 
 
-def get_app_base_path():
-    """アプリで使うベースディレクトリを解決する。"""
+# アプリで使うベースディレクトリを取得する。
+def get_base_path():
+    # androidの場合は、ANDROID_PRIVATEをベースとする。
     if platform == 'android':
         base = os.environ.get('ANDROID_PRIVATE')
         if base and base.endswith('/app'):
@@ -13,6 +14,7 @@ def get_app_base_path():
             ensure_dir(base)
             return base
 
+    # androidでない場合は、resources配下をベースとする。
     repo_root = os.path.dirname(os.path.abspath(__file__))
     for candidate in (
         os.path.join(repo_root, 'resources'),
@@ -25,11 +27,11 @@ def get_app_base_path():
     ensure_dir(base)
     return base
 
-
+# ディレクトリを作成する。
 def ensure_dir(path):
     os.makedirs(path, exist_ok=True)
     return path
 
-
+# ベースパスを元に、指定した部分のファイルパスを取得する。
 def get_resource_path(*parts):
-    return os.path.join(ensure_dir(get_app_base_path()), *parts)
+    return os.path.join(ensure_dir(get_base_path()), *parts)

@@ -43,21 +43,17 @@ version = 2.1
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
 #requirements = python3,kivy
-requirements = python3,
-    kivy,
-    https://github.com/kivymd/KivyMD/archive/master.zip,
-    materialyoucolor,
-    exceptiongroup,
-    asyncgui,
-    asynckivy,
-    msal,
-    Office365-REST-Python-Client,
-    typing-extensions,
-    pytz,
-    pillow,
-    pyjnius,
-    android,
-    jnius
+requirements = python3==3.11.5,
+    Kivy==2.3.0,
+    git+https://github.com/kivymd/KivyMD/@d2f77408999d0298cfbdf75c89d66649880d7492,
+    materialyoucolor==2.0.9,
+    exceptiongroup==1.2.1,
+    asyncgui==0.6.2,
+    asynckivy==0.6.3,
+    msal==1.33.0,
+    Office365-REST-Python-Client==2.5.9,
+    pytz==2022.1,
+    pillow==11.3.0
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes

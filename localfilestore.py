@@ -27,6 +27,7 @@ class LocalFileStore:
         else:
             # ファイルリストがなければ、ローカルファイルを読み込む
             self.files = None
+            self._valid = False
             self.read_files()
 
     # プロパティ：有効フラグ

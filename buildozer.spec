@@ -27,7 +27,7 @@ source.include_exts = py,png,jpg,kv,atlas,ttf
 #source.exclude_exts = spec
 
 # (list) List of directory to exclude (leave empty to not exclude anything)
-#source.exclude_dirs = tests, bin, venv
+source.exclude_dirs = tests, bin, docs
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
@@ -43,7 +43,8 @@ version = 2.1
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
 #requirements = python3,kivy
-requirements = python3==3.11.5,
+requirements = hostpython3==3.11.16,
+    python3==3.11.16,
     Kivy==2.3.0,
     git+https://github.com/kivymd/KivyMD/@d2f77408999d0298cfbdf75c89d66649880d7492,
     materialyoucolor==2.0.9,
@@ -79,7 +80,7 @@ orientation = portrait
 # ":foreground:sticky" for sticky foreground services. The default is a background service.
 # Bound services are not supported.
 #services = NAME:ENTRYPOINT_TO_PY,NAME2:ENTRYPOINT2_TO_PY
-services = thunderloadservice:service/main.py:dataSync
+services = thunderloadservice:service/main.py:foreground:foregroundServiceType=dataSync
 
 #
 # OSX Specific
@@ -368,7 +369,7 @@ android.allow_backup = True
 
 # (str) Bootstrap to use for android builds
 # Run "buildozer android p4a -- bootstraps" for a list of valid values.
-# p4a.bootstrap = sdl2
+p4a.bootstrap = sdl2
 
 # (int) port number to specify an explicit --port= p4a argument (eg for bootstrap flask)
 #p4a.port =

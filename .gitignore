@@ -3,8 +3,5 @@ resources
 __pycache__
 .vscode
 .venv
-docs
-_test.py
-_test2.py
 rules
 thunderload_2_*.code-workspace

@@ -53,8 +53,8 @@ requirements = hostpython3==3.11.16,
     asynckivy==0.6.3,
     msal==1.33.0,
     Office365-REST-Python-Client==2.5.9,
-    pytz==2022.1,
-    pillow==11.3.0
+    pytz,
+    pillow
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -134,7 +134,7 @@ android.api = 34
 #android.sdk = 20
 
 # (str) Android NDK version to use
-#android.ndk = 23b
+android.ndk = 25b
 
 # (int) Android NDK API to use. This is the minimum API your app will support, it should usually match android.minapi.
 #android.ndk_api = 21

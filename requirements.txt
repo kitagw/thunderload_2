@@ -6,5 +6,5 @@ asyncgui==0.6.2
 asynckivy==0.6.3
 msal==1.33.0
 Office365-REST-Python-Client==2.5.9
-pytz==2022.1
-pillow==11.3.0
+pytz==2026.3.post1
+pillow==12.3.0

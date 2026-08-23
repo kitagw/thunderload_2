@@ -1,9 +1,12 @@
 import datetime
 import json
 import os
+import sys
 import threading
 import traceback
 
+import kivy
+import kivymd
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.effects.scroll import ScrollEffect
@@ -271,7 +274,7 @@ class ConfigScreen(MDScreen):
         self.exit_dialog.open()
 
 # AndroidのKivyMDを完全に騙す、バウンドしないカスタムエフェクト
-class LinuxNoBoundScrollEffect(ScrollEffect):
+class NoBoundScrollEffect(ScrollEffect):
     def convert_overscroll(self, *args, **kwargs):
         return 0  # オーバースクロール（バウンド量）を常にゼロにする
 
@@ -285,22 +288,15 @@ class ThunderloadWidget(MDWidget):
             self.ids.file_screen.ids.rv,
             self.ids.log_screen.ids.rv
         ]
-        if platform == 'android':
-            # Android環境：デフォルトの StretchOverScroll 系のバウンド機能を無効化する
-            for rv in rv_list:
-                # 現在入っているAndroid専用クラスのインスタンスを取得
-                current_effect = rv.effect_cls
-                if current_effect:
-                    # オーバースクロール（バウンド）の計算関数を、すべて「0（動かない）」を返す関数にすり替える
-                    if hasattr(current_effect, 'convert_overscroll'):
-                        current_effect.convert_overscroll = lambda *a, **k: 0
-        else:
-            # Linux（PC）環境：通常のScrollEffect系に差し替える
-            for rv in rv_list:
-                rv.effect_cls = LinuxNoBoundScrollEffect
+        # デフォルトの StretchOverScroll 系のバウンド機能を無効化する
+        for rv in rv_list:
+            rv.effect_cls = NoBoundScrollEffect
 
         # ログハンドラ設定
         Log.set_handler(self.add_log, '●')
+        # バージョン情報
+        Log.info('バージョン情報：\n- Python {}\n- Kivy {}\n- KivyMD {}'.format(sys.version.split()[0], kivy.__version__, kivymd.__version__))
+
         # AppStatusのハンドラ設定
         AppStatus.set_handler(self.update_screen_by_appstatus)
         # DriveClient初期化

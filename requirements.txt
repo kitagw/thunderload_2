@@ -1,6 +1,7 @@
 Kivy==2.3.0
 kivymd @ git+https://github.com/kivymd/KivyMD/@d2f77408999d0298cfbdf75c89d66649880d7492
 materialyoucolor==3.0.4
+materialshapes==0.3
 exceptiongroup==1.2.1
 asyncgui==0.6.2
 asynckivy==0.6.3

@@ -49,6 +49,7 @@ ThunderloadWidget:
 
 <FileItem>:
     adaptive_height: True
+    radius: [16,]
     line_color: '#ffff00' if root.status == FileInfo.S_PROCESSING else app.theme_cls.backgroundColor if root.status == FileInfo.S_FINISHED else '#ff0000' if root.status == FileInfo.S_FAILED else '#0066cc'
     line_width: '2sp'
 

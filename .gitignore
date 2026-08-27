@@ -1,7 +1,6 @@
 .buildozer
 resources
 __pycache__
-.vscode
 .venv
 rules
 thunderload_2_*.code-workspace

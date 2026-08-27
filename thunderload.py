@@ -1,12 +1,11 @@
 import datetime
+import importlib.metadata
 import json
 import os
 import sys
 import threading
 import traceback
 
-import kivy
-import kivymd
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.effects.scroll import ScrollEffect
@@ -294,8 +293,20 @@ class ThunderloadWidget(MDWidget):
 
         # ログハンドラ設定
         Log.set_handler(self.add_log, '●')
+
         # バージョン情報
-        Log.info('バージョン情報：\n- Python {}\n- Kivy   {}\n- KivyMD {}'.format(sys.version.split()[0], kivy.__version__, kivymd.__version__))
+        version_kivy = importlib.metadata.version('kivy')
+        version_kivymd = importlib.metadata.version('kivymd')
+        version_msal = importlib.metadata.version('msal')
+        version_office365 = importlib.metadata.version('Office365-REST-Python-Client')
+        Log.info((
+            'バージョン情報：\n'
+            f'- Python {sys.version.split()[0]}\n'
+            f'- Kivy   {version_kivy}\n'
+            f'- KivyMD {version_kivymd}\n'
+            f'- MSAL   {version_msal}\n'
+            f'- Office365-REST-Python-Client {version_office365}'
+        ))
 
         # AppStatusのハンドラ設定
         AppStatus.set_handler(self.update_screen_by_appstatus)

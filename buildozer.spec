@@ -45,7 +45,7 @@ version = 2.1
 #requirements = python3,kivy
 requirements = hostpython3==3.11.16,
     python3==3.11.16,
-    Kivy==2.3.0,
+    Kivy==2.3.1,
     git+https://github.com/kivymd/KivyMD/@d2f77408999d0298cfbdf75c89d66649880d7492,
     materialyoucolor==3.0.4,
     materialshapes==0.3,

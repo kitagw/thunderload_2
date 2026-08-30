@@ -499,6 +499,8 @@ class ThunderloadWidget(MDWidget):
 
     # logスクリーンボタン押下処理
     def on_release_log(self, bar_button):
+        # 一番下にスクロールする
+        self.ids.log_screen.ids.rv.scroll_y = 0.0
         self.ids.sm.current = 'log'
 
     # configスクリーンボタン押下処理

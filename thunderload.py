@@ -667,8 +667,15 @@ class ThunderloadWidget(MDWidget):
         self.file_store.files[index].update_from(fileinfo)
         # RecycleViewの該当アイテムを更新
         rv = self.ids.file_screen.ids.rv
-        rv.data[index] = {}
-        rv.data[index] = fileinfo.data
+        # アイテムが画面表示されているかによって更新方法を切り分ける
+        fileitem = rv.view_adapter.get_visible_view(index)
+        if fileitem:
+            # アイテムが表示されている→dictそのものを更新
+            rv.data[index] = fileinfo.data
+        else:
+            # アイテムが表示されていない→dictは維持して要素更新
+            for key in [FileInfo.K_STATUS, FileInfo.K_RANGE_POS, FileInfo.K_TRY_COUNT]:
+                rv.data[index][key] = fileinfo.data[key]
 
     # インジケーター更新
     def update_progress_indicator(self, color=None):

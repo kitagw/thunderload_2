@@ -81,21 +81,6 @@ class FileItem(RecycleDataViewBehavior, MDBoxLayout):
     try_count = NumericProperty()
     range_pos = NumericProperty()
 
-    def refresh_view_attrs(self, rv, index, data):
-        # 1. 自身のプロパティを更新
-        # これによりkv側のバインディングが自動で発火します
-        self.year = data.get(FileInfo.K_YEAR, '')
-        self.date = data.get(FileInfo.K_DATE, '')
-        self.file_path = data.get(FileInfo.K_FILE_PATH, '')
-        self.file_name = data.get(FileInfo.K_FILE_NAME, '')
-        self.file_size = data.get(FileInfo.K_FILE_SIZE, 0)
-        self.status = data.get(FileInfo.K_STATUS, '')
-        self.try_count = data.get(FileInfo.K_TRY_COUNT, 0)
-        self.range_pos = data.get(FileInfo.K_RANGE_POS, 0)
-        
-        # 2. 親クラスの処理を呼ぶ（必須）
-        return super().refresh_view_attrs(rv, index, data)
-    
 # ファイルRecycleView
 class FileRecycleView(MDRecycleView):
     pass
@@ -674,8 +659,10 @@ class ThunderloadWidget(MDWidget):
             rv.data[index] = fileinfo.data
         else:
             # アイテムが表示されていない→dictは維持して要素更新
-            for key in [FileInfo.K_STATUS, FileInfo.K_RANGE_POS, FileInfo.K_TRY_COUNT]:
-                rv.data[index][key] = fileinfo.data[key]
+            for key, value in fileinfo.data.items():
+                # 変更があった項目だけ更新してイベント発火は最小限にとどめる
+                if rv.data[index][key] != value:
+                    rv.data[index][key] = value
 
     # インジケーター更新
     def update_progress_indicator(self, color=None):

@@ -506,8 +506,12 @@ class ThunderloadWidget(MDWidget):
             if rbl.height > rv.height:
                 rv.scroll_y = 0.0
 
-        self.ids.sm.current = 'log'
-        Clock.schedule_once(init_scroll, 0)
+        # log表示中にもう一度logスクリーンボタン押下
+        if self.ids.sm.current == 'log':
+            # スクロール位置を最下部に移動
+            Clock.schedule_once(init_scroll, 0)
+        else:
+            self.ids.sm.current = 'log'
 
     # configスクリーンボタン押下処理
     def on_release_config(self, bar_button):

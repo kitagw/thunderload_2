@@ -58,7 +58,7 @@ ThunderloadWidget:
         adaptive_height: True
 
         MDIcon:
-            icon: 'lightning-bolt' if root.status == FileInfo.S_PROCESSING else 'cloud' if root.status == FileInfo.S_FINISHED else 'close-thick' if root.status == FileInfo.S_FAILED else 'image-filter-hdr'
+            icon: 'lightning-bolt' if root.status == FileInfo.S_PROCESSING else 'cloud-check-variant' if root.status == FileInfo.S_FINISHED else 'close-thick' if root.status == FileInfo.S_FAILED else 'image-filter-hdr'
             padding: '20sp'
             height: file_label.height
             theme_text_color: 'Custom'

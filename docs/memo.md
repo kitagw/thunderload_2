@@ -9,11 +9,12 @@ git config user.email "tomohisa.kitagawa@hotmail.com"
 python3.11 -m venv .venv
 source .venv/bin/activate
 
-# pip
+# pip install
 pip install --upgrade pip
 pip install --upgrade Cython python-for-android buildozer 
 pip install -r requirements.txt
+pip install pytest
 
-# Buildozer
+# Buildozer(alias:bz)
 rm -rf .buildozer/android/platform/build-arm64-v8a/build/venv
 buildozer -v android debug

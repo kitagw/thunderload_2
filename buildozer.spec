@@ -43,8 +43,8 @@ version = 2.1
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
 #requirements = python3,kivy
-requirements = hostpython3==3.11.17,
-    python3==3.11.17,
+requirements = hostpython3==3.11.18,
+    python3==3.11.18,
     Kivy==2.3.1,
     git+https://github.com/kivymd/KivyMD/@d2f77408999d0298cfbdf75c89d66649880d7492,
     materialyoucolor==3.0.4,

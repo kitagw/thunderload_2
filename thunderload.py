@@ -279,18 +279,40 @@ class ThunderloadWidget(MDWidget):
         # ログハンドラ設定
         Log.set_handler(self.add_log, '●')
 
-        # バージョン情報
-        version_kivy = importlib.metadata.version('kivy')
-        version_kivymd = importlib.metadata.version('kivymd')
-        version_msal = importlib.metadata.version('msal')
-        version_office365 = importlib.metadata.version('Office365-REST-Python-Client')
+        # バージョン情報を表示するパッケージリスト
+        packages_to_check = [
+            # (表示名, pipのパッケージ名)
+            ("AsyncGUI", "asyncgui"),
+            ("AsyncKivy", "asynckivy"),
+            ("ExceptionGroup", "exceptiongroup"),
+            ("Kivy", "kivy"),
+            ("KivyMD", "kivymd"),
+            ("MaterialShapes", "materialshapes"),
+            ("MaterialYouColor", "materialyoucolor"),
+            ("MSAL", "msal"),
+            ("Office365 REST Python Client", "Office365-REST-Python-Client"),
+            ("Pillow", "pillow"),
+            ("pytz", "pytz"),
+            ("Typing Extensions", "typing_extensions"),
+        ]
+
+        # ループでバージョン情報を取得し、リストにまとめる
+        package_lines = []
+        for display_name, pkg_name in packages_to_check:
+            try:
+                version = importlib.metadata.version(pkg_name)
+            except importlib.metadata.PackageNotFoundError:
+                version = "未インストール"
+            # 表示名を18文字までスペース補完
+            package_lines.append(f"- {display_name:<18} {version}")
+
+        # まとめてログ出力
+        packages_str = "\n".join(package_lines)
         Log.info((
-            'バージョン情報：\n'
-            f'- Python {sys.version.split()[0]}\n'
-            f'- Kivy   {version_kivy}\n'
-            f'- KivyMD {version_kivymd}\n'
-            f'- MSAL   {version_msal}\n'
-            f'- Office365-REST-Python-Client {version_office365}'
+            "バージョン情報：\n"
+            f"- Python {sys.version.split()[0]}\n"
+            "＜パッケージ＞\n"
+            f"{packages_str}"
         ))
 
         # AppStatusのハンドラ設定

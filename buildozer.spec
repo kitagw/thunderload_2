@@ -56,7 +56,7 @@ requirements = hostpython3==3.11.18,
     Office365-REST-Python-Client==3.3.0,
     typing_extensions==4.16.0,
     pytz==2026.3.post1,
-    pillow==12.3.0
+    pillow==11.3.0
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes

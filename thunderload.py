@@ -524,13 +524,14 @@ class ThunderloadWidget(MDWidget):
         def init_scroll(dt):
             rv = self.ids.log_screen.ids.rv
             rbl = self.ids.log_screen.ids.rbl
-            # スクロール可能な状態であれば一番下にスクロールする
+            # スクロール可能な状態であればスクロールする
             if rbl.height > rv.height:
-                rv.scroll_y = 0.0
+                # スクロール位置を最下部に移動、既に最下部であれば最上部に移動
+                rv.scroll_y = 0.0 if rv.scroll_y != 0.0 else 1.0
 
         # log表示中にもう一度logスクリーンボタン押下
         if self.ids.sm.current == 'log':
-            # スクロール位置を最下部に移動
+            # スクロール位置を移動
             Clock.schedule_once(init_scroll, 0)
         else:
             self.ids.sm.current = 'log'

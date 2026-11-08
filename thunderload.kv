@@ -101,7 +101,6 @@ ThunderloadWidget:
                     on_release: app.root.on_release_refresh()
 
         MDLinearProgressIndicator:
-            id: ind
             adaptive_height: True
             size_hint: 1, 0.005
             value: app.progress_value
@@ -160,7 +159,6 @@ ThunderloadWidget:
                 text: 'ログ'
 
         MDLinearProgressIndicator:
-            id: log_ind
             adaptive_height: True
             size_hint: 1, 0.005
             value: app.progress_value
@@ -234,7 +232,6 @@ ThunderloadWidget:
                     on_release: root.on_release_exit()
 
         MDLinearProgressIndicator:
-            id: config_ind
             adaptive_height: True
             size_hint: 1, 0.005
             value: app.progress_value

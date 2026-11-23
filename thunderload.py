@@ -298,13 +298,18 @@ class ThunderloadWidget(MDWidget):
 
         # ループでバージョン情報を取得し、リストにまとめる
         package_lines = []
+        display_name_maxlength = 18 # 表示名の最大文字数
         for display_name, pkg_name in packages_to_check:
             try:
                 version = importlib.metadata.version(pkg_name)
             except importlib.metadata.PackageNotFoundError:
                 version = "未インストール"
-            # 表示名を18文字までスペース補完
-            package_lines.append(f"- {display_name:<18} {version}")
+            # 表示名をスペース補完
+            if len(display_name) <= display_name_maxlength:
+                package_lines.append(f"- {display_name:<{display_name_maxlength}} {version}")
+            else:
+                package_lines.append(f"- {display_name}")
+                package_lines.append(f"  {' ' * display_name_maxlength} {version}")
 
         # まとめてログ出力
         packages_str = "\n".join(package_lines)
@@ -484,8 +489,10 @@ class ThunderloadWidget(MDWidget):
                 self.ids.file_screen.ids.msg.text = 'アップロード完了 ({}/{})'.format(self.file_store.completed_file_count, self.file_store.file_count)
 
             case AppStatus.S_ERROR:
-                # 稲妻ボタンを非活性にする
-                self.ids.thunder_button.disabled = True
+                # 稲妻ボタンを活性にする
+                self.ids.thunder_button.disabled = False
+                # 稲妻ボタンを黄色にする
+                self.ids.thunder_button.color = [1, 1, 0, 1]
                 # 更新ボタン活性化する
                 self.ids.file_screen.ids.refresh_button.disabled = False
                 # 更新ボタンを白色にする
@@ -567,8 +574,8 @@ class ThunderloadWidget(MDWidget):
                 # サービス開始
                 Clock.schedule_once(self.start_service, 0)
 
-            case AppStatus.S_STOPPED:
-                # AppStatusを停止から実行中に更新
+            case AppStatus.S_STOPPED | AppStatus.S_ERROR:
+                # AppStatusを停止またはエラーから実行中に更新
                 AppStatus.set_status(AppStatus.S_RUNNING)
                 # サービス開始
                 Clock.schedule_once(self.start_service, 0)

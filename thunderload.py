@@ -646,7 +646,7 @@ class ThunderloadWidget(MDWidget):
                         # ファイルアイテム更新
                         self.refresh_file_item(file_no, fileinfo)
 
-                        # 進捗更新は、処理中のファイルに対してのみ行う（完了や失敗の更新は on_complete や on_error で行う）
+                        # 進捗更新は、処理中のファイルに対してのみ行う
                         match event:
                             case FileInfo.E_FILE_PROGRESS:
                                 self.on_file_progress(file_no, fileinfo)

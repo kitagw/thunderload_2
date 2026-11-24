@@ -8,8 +8,8 @@ from pathutils import get_resource_path
 '''
 進捗管理クラス
 進捗の管理方法：
-- 進捗は、バックログ、処理中、完了の3つのステータスで管理する
-- 進捗は、バックログ、処理中、完了の3つのフォルダに分けて管理する
+- 進捗は、バックログ、処理中、完了、エラーの3つのステータスで管理する
+- 進捗は、バックログ、処理中、完了、エラーの3つのフォルダに分けて管理する
 - 進捗のファイルは、ユニークなIDをファイル名とする
 - 進捗の更新日時は、ファイルの更新日時を使用する
 - 進捗の内容は、ファイルの中身を使用する
@@ -19,6 +19,7 @@ from pathutils import get_resource_path
 - バックログ：backlog
 - 処理中：processing
 - 完了：done
+- エラー：error
 '''
 class ProgressManager():
     # クラス変数：初期化フラグ
@@ -28,6 +29,7 @@ class ProgressManager():
     K_BACKLOG = 'BACKLOG'
     K_PROCESSING = 'PROCESSING'
     K_DONE = 'DONE'
+    K_ERROR = 'ERROR'
     # クラス変数：進捗管理フォルダパス
     items = {}
 
@@ -46,6 +48,7 @@ class ProgressManager():
         cls.items[cls.K_BACKLOG] = os.path.join(BASE, 'backlog')
         cls.items[cls.K_PROCESSING] = os.path.join(BASE, 'processing')
         cls.items[cls.K_DONE] = os.path.join(BASE, 'done')
+        cls.items[cls.K_ERROR] = os.path.join(BASE, 'error')
 
         # 各ステータス用フォルダが存在しない場合は作成する
         for p in cls.items.values():
@@ -63,8 +66,8 @@ class ProgressManager():
     # 進捗ファイルを初期化
     @classmethod
     def init_progress(cls, files):
-        # progressフォルダのbacklog、processing、doneの進捗ファイルを初期化する
-        for folder in [cls.K_BACKLOG, cls.K_PROCESSING, cls.K_DONE]:
+        # progressフォルダのbacklog、processing、done、errorの進捗ファイルを初期化する
+        for folder in [cls.K_BACKLOG, cls.K_PROCESSING, cls.K_DONE, cls.K_ERROR]:
             folder_path = cls.get(folder)
             # フォルダ内のファイルを削除する
             for f in os.listdir(folder_path):
@@ -90,6 +93,8 @@ class ProgressManager():
                 f.status = FileInfo.S_UNPROCESSED
             elif os.path.exists(os.path.join(cls.get(cls.K_PROCESSING), f.file_name)):
                 f.status = FileInfo.S_PROCESSING
+            elif os.path.exists(os.path.join(cls.get(cls.K_ERROR), f.file_name)):
+                f.status = FileInfo.S_FAILED
             elif os.path.exists(os.path.join(cls.get(cls.K_DONE), f.file_name)):
                 f.status = FileInfo.S_FINISHED
                 f.range_pos = f.file_size # アップロード済のバイト位置はファイルサイズと同じにする
@@ -103,9 +108,10 @@ class ProgressManager():
         filelist_path = os.path.join(cls.get(cls.K_PROGRESS_BASE), 'filelist.json')
         if os.path.exists(filelist_path):
             os.remove(filelist_path)
-        # progressフォルダのbacklog、processing、doneの進捗ファイルを削除する
-        for folder in [cls.K_BACKLOG, cls.K_PROCESSING, cls.K_DONE]:
+        # progressフォルダのbacklog、processing、done、errorの進捗ファイルを削除する
+        for folder in [cls.K_BACKLOG, cls.K_PROCESSING, cls.K_DONE, cls.K_ERROR]:
             folder_path = cls.get(folder)
+            # フォルダ内のファイルを削除する
             for f in os.listdir(folder_path):
                 file_path = os.path.join(folder_path, f)
                 if os.path.isfile(file_path):
@@ -117,7 +123,8 @@ class ProgressManager():
         backlog_count = len(os.listdir(cls.get(cls.K_BACKLOG)))
         processing_count = len(os.listdir(cls.get(cls.K_PROCESSING)))
         done_count = len(os.listdir(cls.get(cls.K_DONE)))
-        Log.info('進捗ファイル：{} / {} / {}'.format(backlog_count, processing_count, done_count))
+        error_count = len(os.listdir(cls.get(cls.K_ERROR)))
+        Log.info('進捗ファイル：B {} / P {} / D {} / E {}'.format(backlog_count, processing_count, done_count, error_count))
 
     # 進捗ファイルをbacklogからprocessingに移動する
     @classmethod
@@ -134,6 +141,22 @@ class ProgressManager():
         done_path = os.path.join(cls.get(cls.K_DONE), fileinfo.file_name)
         if os.path.exists(processing_path):
             os.rename(processing_path, done_path)
+
+    # 進捗ファイルをprocessingからerrorに移動する
+    @classmethod
+    def transition_processing_to_error(cls, fileinfo):
+        processing_path = os.path.join(cls.get(cls.K_PROCESSING), fileinfo.file_name)
+        error_path = os.path.join(cls.get(cls.K_ERROR), fileinfo.file_name)
+        if os.path.exists(processing_path):
+            os.rename(processing_path, error_path)
+
+    # 進捗ファイルをerrorからprocessingに移動する
+    @classmethod
+    def transition_error_to_processing(cls, fileinfo):
+        error_path = os.path.join(cls.get(cls.K_ERROR), fileinfo.file_name)
+        processing_path = os.path.join(cls.get(cls.K_PROCESSING), fileinfo.file_name)
+        if os.path.exists(error_path):
+            os.rename(error_path, processing_path)
 
 # 静的初期化
 ProgressManager._initialize_static()

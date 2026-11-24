@@ -148,6 +148,10 @@ class ThunderloadService():
             if fileinfo.status == FileInfo.S_FINISHED:
                 Log.info('[{}] {}：既済'.format(file_no, fileinfo.file_name))
                 continue
+            elif fileinfo.status == FileInfo.S_FAILED:
+                # エラーは処理中に戻す
+                Log.info('[{}] {}：復帰'.format(file_no, fileinfo.file_name))
+                ProgressManager.transition_error_to_processing(fileinfo)
 
             # MAX_TRY_COUNTまで試行する
             for i in range(1, DriveClient.MAX_TRY_COUNT + 1):
@@ -189,6 +193,8 @@ class ThunderloadService():
                     if i == DriveClient.MAX_TRY_COUNT:
                         # 状態：処理中→失敗
                         fileinfo.to_stat_failed()
+                        # 進捗ファイルをprocessingからerrorに移動する
+                        ProgressManager.transition_processing_to_error(fileinfo)
                         # 通知：失敗
                         self.send_fileinfo(file_no, fileinfo, FileInfo.E_ERROR)
                         # AppStatus：失敗

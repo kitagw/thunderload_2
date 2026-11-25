@@ -18,7 +18,7 @@ def make_fileinfo(name, size=10):
 
 
 # テスト内容:
-# - backlog/processing/done フォルダ間のファイル移動（遷移）が正しく行われること
+# - backlog/processing/done/error フォルダ間のファイル移動（遷移）が正しく行われること
 # - `init_progress()` が `filelist.json` を作成すること
 # - `clear_progress()` が進捗情報を削除すること
 def test_progress_lifecycle(tmp_path):
@@ -26,9 +26,11 @@ def test_progress_lifecycle(tmp_path):
     backlog = base / 'backlog'
     processing = base / 'processing'
     done = base / 'done'
+    error = base / 'error'
     backlog.mkdir(parents=True)
     processing.mkdir()
     done.mkdir()
+    error.mkdir()
 
     # ProgressManager のパスをテスト用に差し替え
     ProgressManager.items = {
@@ -36,6 +38,7 @@ def test_progress_lifecycle(tmp_path):
         ProgressManager.K_BACKLOG: str(backlog),
         ProgressManager.K_PROCESSING: str(processing),
         ProgressManager.K_DONE: str(done),
+        ProgressManager.K_ERROR: str(error),
     }
 
     f1 = make_fileinfo('file1.jpg')
@@ -48,6 +51,16 @@ def test_progress_lifecycle(tmp_path):
     # backlog -> processing に移動できること
     ProgressManager.transition_backlog_to_processing(f1)
     assert not os.path.exists(os.path.join(str(backlog), f1.file_name))
+    assert os.path.exists(os.path.join(str(processing), f1.file_name))
+
+    # processing -> error に移動できること
+    ProgressManager.transition_processing_to_error(f1)
+    assert not os.path.exists(os.path.join(str(processing), f1.file_name))
+    assert os.path.exists(os.path.join(str(error), f1.file_name))
+
+    # error -> processing に移動できること
+    ProgressManager.transition_error_to_processing(f1)
+    assert not os.path.exists(os.path.join(str(error), f1.file_name))
     assert os.path.exists(os.path.join(str(processing), f1.file_name))
 
     # processing -> done に移動できること
